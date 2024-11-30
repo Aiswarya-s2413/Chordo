@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Add Variants{% endblock %}
+{% block content %}
+<div class="col-md-8">
+    <h2 class="text-center mb-4">Add Variants for {{ product.name }}</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ variant_formset.management_form }}
+
+        <div class="row">
+            {% for variant_form in variant_formset %}
+                <div class="col-md-4 mb-3">
+                    {{ variant_form.color.label_tag }}
+                    {{ variant_form.color }}
+                    {% if variant_form.color.errors %}
+                        <div class="text-danger">{{ variant_form.color.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    {{ variant_form.price.label_tag }}
+                    {{ variant_form.price }}
+                    {% if variant_form.price.errors %}
+                        <div class="text-danger">{{ variant_form.price.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    {{ variant_form.quantity.label_tag }}
+                    {{ variant_form.quantity }}
+                    {% if variant_form.quantity.errors %}
+                        <div class="text-danger">{{ variant_form.quantity.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <h5>Images for Variant {{ forloop.counter }}</h5>
+                {{ image_formset.management_form }}
+
+                {% for image_form in image_formset %}
+                    <div class="col-md-6 mb-3">
+                        {{ image_form.image.label_tag }}
+                        {{ image_form.image }}
+                        {% if image_form.image.errors %}
+                            <div class="text-danger">{{ image_form.image.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-dark">Add Variant</button>
+        </div>
+    </form>
+</div>
+
+
+
+{% endblock %}

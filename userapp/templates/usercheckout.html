@@ -1,0 +1,163 @@
+{% extends 'userbase.html' %}
+{% load static %} 
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<div class="checkout-container">
+    {% if messages %}
+    <div class="alert-container" style="position: fixed; top: 0; left: 0; right: 0; z-index: 9999;">
+        {% for message in messages %}
+            <div class="alert alert-secondary alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+    <h2>CHECKOUT</h2>
+    <h5 class="mt-4">DELIVERY ADDRESS</h5>
+    <div class="col-md-6">
+     <!-- Add Address Button -->
+     <div class="row justify-content-center me-1">
+        <button class="btn btn-secondary mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#addressForm" aria-expanded="false" aria-controls="addressForm">
+            + Add Address
+          </button>
+        </div>
+          <!-- Collapsible Form -->
+          <div class="collapse mt-3" id="addressForm">
+            <form id="addAddressForm" method="POST" action="{% url 'addAddress' %}">
+                {% csrf_token %}
+                {{ address_form.as_p }}  <!-- Render the address form -->
+                <input type="hidden" name="next" value="checkout">
+                <div class="row justify-content-center mx-1">
+                    <button type="submit" class="btn btn-dark">Add Address</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <form action="{% url 'userCheckout' %}" method="POST" id="payment-form">
+        {% csrf_token %}
+    <div class="row ">
+    
+    <div class="col-md-6">
+
+       
+         <div class="address-list mt-4">
+            {% for address in addresses %}
+            <div class="address-box p-3">
+                <label class="address-box">
+                    <p>
+                        <input type="radio" name="shipping_address_id" value="{{ address.id }}" class="address-radio"
+                               {% if primary_address and address.id == primary_address.id %}checked{% endif %}>
+                        <strong>{{ user.username }}</strong>{% if address.is_primary %}
+                        <span class="badge bg-success">Primary Address</span>
+                    {% endif %}<br>
+                        {{ profile.phone_number }}<br>
+                        {{ address.address_line1 }},
+                        {{ address.address_line2 }}<br>
+                        {{ address.city }}, {{ address.state }}, {{ address.pincode }}<br>
+                        {{ address.country }}
+                    </p>
+                    
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Order Summary Section -->
+    
+        
+        <div class="col-md-6">
+            <div class="summary-box p-3">
+                <p><span class="float-end"></span></p>
+                <h4>Order Summary</h4>
+                
+                <!-- <p>Total amount: <span class="float-end"> Rs.{{total_price}}</span></p> -->
+                <!-- <p>Coupon discount: <span class="float-end text-danger">Not applicable</span></p> -->
+                <p class="payable-amount">
+                    Payable amount: 
+                    <span class="float-end">
+                        Rs.{{total_with_delivery|floatformat:2 }}
+                    </span>
+                </p>
+
+                <h6 class="mt-3">SELECT PAYMENT MODE</h6>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="radio" name="paymentMethod" id="razorPay" value="razorPay" >
+                    <label class="form-check-label" for="razorPay">
+                        Razor Pay
+                    </label>
+                </div>
+                
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="paymentMethod" id="cashOnDelivery" value="cashOnDelivery">
+                    <label class="form-check-label" for="cashOnDelivery">
+                        Cash on delivery
+                    </label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="paymentMethod" id="wallet" value="wallet">
+                    <label class="form-check-label" for="wallet">
+                        Wallet
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" name="checkout" id="pay-now-button" class="place-order-btn mt-4">PLACE ORDER</button>
+             <!-- Razorpay Button (Only Show if Razorpay is selected) -->
+             {% if razorpay_order %}
+             <div id="razorpay-button-container" class="mt-3 text-center">
+                 <button id="rzp-button1" class="btn btn-lg btn-primary">Pay with Razorpay</button>
+             </div>
+             {% endif %}
+        </div>
+    </div>
+</form>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="order-confirmation-modal" class="{% if order_placed %}modal-show{% else %}modal-hide{% endif %}">
+    <div class="modal-content">
+        <h4 class="text-success">Order Confirmed</h4>
+        <p>Your order was successfully placed. To see your order status, visit the order details page.</p>
+        <a href="{% url 'userHome' %}" class="order-close-btn btn btn-lg btn-dark">Continue Shopping</a>
+    </div>
+</div>
+
+<!-- Overlay -->
+{% if order_placed %}
+<div class="modal-overlay"></div>
+{% endif %}
+<!-- Razorpay button and script -->
+{% if razorpay_order %}
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+var options = {
+    "key": "{{ razorpay_key }}",
+    "amount": "{{ razorpay_order.amount }}",
+    "currency": "INR",
+    "name": "Chordo",
+    "description": "Test Transaction",
+    "order_id": "{{ razorpay_order.id }}",
+    "callback_url": "{% url 'verifyPayment' %}",
+    "prefill": {
+        "name": "{{ profile.name }}",
+        "email": "{{ request.user.email }}",
+        "contact": "{{ profile.phone_number }}"
+    },
+    "theme": {
+        "color": "#3399cc"
+    }
+};
+var rzp1 = new Razorpay(options);
+document.getElementById('rzp-button1').onclick = function(e){
+    rzp1.open();
+    e.preventDefault();
+}
+</script>
+{% endif %}
+
+
+{% endblock %}

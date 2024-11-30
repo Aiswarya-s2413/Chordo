@@ -1,0 +1,158 @@
+{% extends 'userbase.html' %}
+{% load static %}
+{% block title %}Product List{% endblock %}
+{% block content %}
+
+<div class="toast-container position-fixed top-0 start-50 p-3">
+    <div id="toast-message" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            Message goes here.
+        </div>
+    </div>
+</div>
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a class="text-decoration-none text-dark" href="{% url 'userHome' %}">Home</a></li>
+      <li class="breadcrumb-item"><a class="text-decoration-none text-dark" href="{% url 'userCategories' %}">Categories</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{category.name}}</li>
+    </ol>
+  </nav>
+
+<div class="container-fluid mt-4">
+    <h2>{{category.name}}</h2>
+    <div class="row">
+        
+        <!-- Filter by Dropdown -->
+        {% comment %} <div class="col-md-12 d-flex justify-content-end filter-container">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-dark dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Filter by
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="filterDropdown">
+                    <li><a class="dropdown-item" href="#">Price: Low to High</a></li>
+                    <li><a class="dropdown-item" href="#">Price: High to Low</a></li>
+                    <li><a class="dropdown-item" href="#">Rating: High to Low</a></li>
+                    <li><a class="dropdown-item" href="#">Newest First</a></li>
+                </ul>
+            </div>
+        </div> {% endcomment %}
+
+        
+        <div class="row justify-content-center">
+            {% for product in products %}
+            <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
+                <a href="{% url 'productView' product.id %}" class="listlink">
+                    <div class="card list shadow-sm product-card">
+                        <!-- Product Image -->
+                        <img src="{{ product.images.first.image.url }}" class="card-img-top product-image" alt="{{ product.product_images.first.alt_text }}">
+                        <div class="card-body position-relative">
+                            <h5 class="card-title list">{{ product.product.name }}</h5>
+                            <div>
+                                <p class="card-text mb-0">Rs.{{ product.get_display_price }}
+                                    {% if product.discounted_price and product.discounted_price < product.price %}
+            <span class="badge bg-success">Offer</span>
+        {% endif %}
+                                </p>
+                            </div>
+                            <div>
+                                <span>
+                                    {% for _ in product.full_stars %}
+                                        <i class="fas fa-star text-warning"></i>
+                                    {% endfor %}
+                                    {% if product.half_star %}
+                                        <i class="fas fa-star-half-alt text-warning"></i>
+                                    {% endif %}
+                                    {% for _ in product.empty_stars %}
+                                        <i class="far fa-star text-secondary"></i>
+                                    {% endfor %}
+                                </span>
+                            </div>
+                            <!-- Cart and Wishlist icons -->
+                            {% if user.is_authenticated %}
+                            <div class="icon-container">
+                                <a href="#" class="cart-icon me-3" data-url="{% url 'addToCart' product.id %}" onclick="addToCart(this)">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </a>
+                                <a href="#" class="wishlist-icon {% if product.id in wishlist_items %}text-danger{% endif %}" 
+                                data-url="{% url 'addToWishlist' product.id %}" 
+                                onclick="toggleWishlist(this)">
+                                    <i class="{% if product.id in wishlist_items %}fas{% else %}far{% endif %} fa-heart"></i>
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% empty %}
+        <p>No products available in this category.</p>
+            {% endfor %}
+        </div>
+        
+ 
+        </div>
+    </div>
+ 
+    <script>
+        function showToast(message, success = true) {
+    const toastEl = document.getElementById('toast-message');
+    const toastBody = toastEl.querySelector('.toast-body');
+    const toastHeader = toastEl.querySelector('.toast-header');
+    
+    toastBody.textContent = message;
+    toastEl.classList.remove('bg-danger', 'bg-success');
+    toastEl.classList.add(success ? 'bg-success' : 'bg-danger');
+    
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+}
+
+function addToCart(element) {
+    const url = element.getAttribute('data-url'); // Get the URL from the data-url attribute
+
+    fetch(url, { method: 'GET' })
+        .then(response => response.json())
+        .then(data => {
+            showToast(data.message, data.success);
+        })
+        .catch(error => {
+            showToast('An error occurred while adding to cart.', false);
+            console.error('Error:', error);
+        });
+}
+
+function toggleWishlist(element) {
+    const url = element.getAttribute('data-url'); // Get the URL from the data-url attribute
+
+    fetch(url, { method: 'GET' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const icon = element.querySelector('i');
+                const isFavorite = icon.classList.contains('fas');
+
+                // Toggle classes based on current state
+                if (isFavorite) {
+                    icon.classList.remove('fas', 'text-danger');
+                    icon.classList.add('far');
+                } else {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas', 'text-danger');
+                }
+            }
+            showToast(data.message, data.success);
+        })
+        .catch(error => {
+            showToast('An error occurred while modifying wishlist.', false);
+            console.error('Error:', error);
+        });
+}
+        </script>
+        
+        
+{% endblock %}

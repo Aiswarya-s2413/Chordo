@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Add Coupon{% endblock %}
+{% block content %}
+
+        
+<div class="col-md-10">
+    <h2 class="text-center mb-4">Add New Coupon</h2>
+    <form method="post" enctype="multipart/form-data" class="custom-form">
+        {% csrf_token %}
+        
+        <!-- Coupon Code -->
+        <div class="mb-3">
+            <label class="form-label">{{ coupon_form.code.label }}</label>
+            {{ coupon_form.code }}
+            {% if coupon_form.code.errors %}
+                <div class="text-danger">{{ coupon_form.code.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Discount Type -->
+        <div class="mb-3">
+            <label class="form-label">{{ coupon_form.discount_type.label }}</label>
+            {{ coupon_form.discount_type }}
+            {% if coupon_form.discount_type.errors %}
+                <div class="text-danger">{{ coupon_form.discount_type.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Discount Value -->
+        <div class="mb-3">
+            <label class="form-label">{{ coupon_form.discount_value.label }}</label>
+            {{ coupon_form.discount_value }}
+            {% if coupon_form.discount_value.errors %}
+                <div class="text-danger">{{ coupon_form.discount_value.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Max Total Use -->
+        <div class="mb-3">
+            <label class="form-label">{{ coupon_form.max_total_use.label }}</label>
+            {{ coupon_form.max_total_use }}
+            {% if coupon_form.max_total_use.errors %}
+                <div class="text-danger">{{ coupon_form.max_total_use.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Max Use Per User -->
+        <div class="mb-3">
+            <label class="form-label">{{ coupon_form.max_use_per_user.label }}</label>
+            {{ coupon_form.max_use_per_user }}
+            {% if coupon_form.max_use_per_user.errors %}
+                <div class="text-danger">{{ coupon_form.max_use_per_user.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Expiry Date -->
+        <div class="mb-3">
+            <label class="form-label">{{ coupon_form.expiry_date.label }}</label>
+            {{ coupon_form.expiry_date }}
+            {% if coupon_form.expiry_date.errors %}
+                <div class="text-danger">{{ coupon_form.expiry_date.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Minimum Order Amount -->
+        <div class="mb-3">
+            <label class="form-label">{{ coupon_form.min_order_amount.label }}</label>
+            {{ coupon_form.min_order_amount }}
+            {% if coupon_form.min_order_amount.errors %}
+                <div class="text-danger">{{ coupon_form.min_order_amount.errors.0 }}</div>
+            {% endif %}
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-dark">Add Coupon</button>
+        </div>
+    </form>
+</div>
+
+
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+
+<div class="col-md-10">
+        <!-- Sales Report Heading -->
+        <div class="text-center mb-5">
+            <h1 class="fw-bold">Admin Dashboard - Sales Report</h1>
+            <p class="text-muted">Monitor your sales performance with daily, weekly, and monthly insights.</p>
+        </div>
+    
+        <!-- Report Filters -->
+        <div class="card shadow p-4 mb-4">
+            <h4 class="mb-3">Generate Sales Report</h4>
+            <form method="get" action="{% url 'downloadReport' %}" class="row g-3">
+                <div class="col-md-6">
+                    <label for="start_date" class="form-label">Start Date:</label>
+                    <input type="date" name="start_date" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="end_date" class="form-label">End Date:</label>
+                    <input type="date" name="end_date" class="form-control" required>
+                </div>
+                <div class="d-flex justify-content-center mt-3">
+                    <button type="submit" class="btn btn-success me-2" name="download_type" value="excel">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Download Excel
+                    </button>
+                    <button type="submit" class="btn btn-danger" name="download_type" value="pdf">
+                        <i class="bi bi-file-earmark-pdf"></i> Download PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    
+        <!-- Summary Overview -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary shadow mb-4">
+                    <div class="card-body text-center">
+                        <h5>Total Orders</h5>
+                        <h3>{{ total_orders }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success shadow mb-4">
+                    <div class="card-body text-center">
+                        <h5>Total Sales</h5>
+                        <h3>₹{{ total_sales }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-warning shadow mb-4">
+                    <div class="card-body text-center">
+                        <h5>Total Discounts</h5>
+                        <h3>₹{{ total_discounts }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        <!-- Detailed Reports -->
+        <div class="row">
+            <!-- Daily Sales Report -->
+            <div class="col-md-4">
+                <div class="card shadow p-4 mb-4">
+                    <h5 class="mb-3">Today's Sales</h5>
+                    <table class="table table-borderless">
+                        <tbody>
+                            <tr>
+                                <td>Total Sales:</td>
+                                <td><strong>₹{{ daily_sales }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Total Discounts:</td>
+                                <td><strong>₹{{ daily_discounts }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Net Sales:</td>
+                                <td><strong>₹{{ daily_net_sales }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+    
+            <!-- Weekly Sales Report -->
+            <div class="col-md-4">
+                <div class="card shadow p-4 mb-4">
+                    <h5 class="mb-3">This Week's Sales</h5>
+                    <table class="table table-borderless">
+                        <tbody>
+                            <tr>
+                                <td>Total Sales:</td>
+                                <td><strong>₹{{ weekly_sales }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Total Discounts:</td>
+                                <td><strong>₹{{ weekly_discounts }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Net Sales:</td>
+                                <td><strong>₹{{ weekly_net_sales }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+    
+            <!-- Monthly Sales Report -->
+            <div class="col-md-4">
+                <div class="card shadow p-4 mb-4">
+                    <h5 class="mb-3">This Month's Sales</h5>
+                    <table class="table table-borderless">
+                        <tbody>
+                            <tr>
+                                <td>Total Sales:</td>
+                                <td><strong>₹{{ monthly_sales }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Total Discounts:</td>
+                                <td><strong>₹{{ monthly_discounts }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Net Sales:</td>
+                                <td><strong>₹{{ monthly_net_sales }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mt-5">
+            <div class="row">
+                <div class="col-12">
+                    <div class="d-flex justify-content-center mb-3">
+                        <select id="chartFilter" class="form-select">
+                            <option value="daily">Daily</option>
+                            <option value="monthly" selected>Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                    <div class="chart-container" style="position: relative; height:50vh; width:100%">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <a href="{% url 'topSellers' %}" class="text-end">See top categories and products</a>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const ctx = document.getElementById("salesChart").getContext("2d");
+    let salesChart;
+
+    // Initialize the chart
+    function initializeChart() {
+        salesChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "Sales",
+                        data: [],
+                        borderColor: "rgba(75, 192, 192, 1)",
+                        backgroundColor: "rgba(75, 192, 192, 0.2)",
+                        borderWidth: 2,
+                    },
+                    {
+                        label: "Orders",
+                        data: [],
+                        borderColor: "rgba(153, 102, 255, 1)",
+                        backgroundColor: "rgba(153, 102, 255, 0.2)",
+                        borderWidth: 2,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: "top" },
+                    title: { display: true, text: "Sales and Orders Overview" },
+                },
+                scales: {
+                    x: { title: { display: true, text: "Date" } },
+                    y: {
+                        title: { display: true, text: "Values" },
+                        beginAtZero: true,
+                    },
+                },
+            },
+        });
+    }
+
+    // Fetch data based on filter
+    function fetchData(filter) {
+        document.getElementById('chartFilter').disabled = true; // Disable dropdown during fetch
+        fetch(`/chart-data/?filter=${filter}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log(data); // Debug: Check fetched data
+                if (data.labels.length === 0) {
+                    salesChart.data.labels = ["No data"];
+                    salesChart.data.datasets[0].data = [0];
+                    salesChart.data.datasets[1].data = [0];
+                } else {
+                    salesChart.data.labels = data.labels;
+                    salesChart.data.datasets[0].data = data.sales;
+                    salesChart.data.datasets[1].data = data.orders;
+                }
+                salesChart.update();
+            })
+            .catch(error => {
+                alert("Failed to load chart data. Please try again.");
+                console.error("Error fetching chart data:", error);
+            })
+            .finally(() => {
+                document.getElementById('chartFilter').disabled = false; // Re-enable dropdown
+            });
+    }
+
+    // Initialize chart and fetch data
+    document.addEventListener("DOMContentLoaded", () => {
+        initializeChart();
+        fetchData('monthly'); // Default to monthly data
+
+        const filterSelect = document.getElementById('chartFilter');
+        filterSelect.addEventListener('change', (event) => {
+            const selectedFilter = event.target.value;
+            fetchData(selectedFilter);
+        });
+    });
+</script>
+    
+    
+        {% endblock %}

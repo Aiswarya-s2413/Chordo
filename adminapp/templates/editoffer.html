@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block title %}Edit {{ type }}{% endblock %}
+{% block content %}
+<div class="col-md-10">
+    <h2 class="text-center mb-4">Edit {{ type }}</h2>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="card p-4">
+            <div class="form-group mb-3">
+                <label for="id_name" class="form-label">Offer Name</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    <div class="text-danger">
+                        {% for error in form.name.errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="id_description" class="form-label">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <div class="text-danger">
+                        {% for error in form.description.errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="id_discount_percentage" class="form-label">Discount Percentage</label>
+                {{ form.discount_percentage }}
+                {% if form.discount_percentage.errors %}
+                    <div class="text-danger">
+                        {% for error in form.discount_percentage.errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="id_discount_amount" class="form-label">Discount Amount</label>
+                {{ form.discount_amount }}
+                {% if form.discount_amount.errors %}
+                    <div class="text-danger">
+                        {% for error in form.discount_amount.errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="id_start_date" class="form-label">Start Date</label>
+                {{ form.start_date }}
+                {% if form.start_date.errors %}
+                    <div class="text-danger">
+                        {% for error in form.start_date.errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group mb-3">
+                <label for="id_end_date" class="form-label">End Date</label>
+                {{ form.end_date }}
+                {% if form.end_date.errors %}
+                    <div class="text-danger">
+                        {% for error in form.end_date.errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+             <!-- display fields based on offer type -->
+             {% if type == 'Product Offer' %}
+             <div class="form-group mb-3">
+                 <label for="id_product" class="form-label">Product</label>
+                 <select name="product" class="form-control">
+                     {% for product in form.product.field.queryset %}
+                         <option value="{{ product.id }}" {% if product.id == form.product.value %} selected {% endif %}>
+                             {{ product.name|slice:":200" }}{% if product.name|length > 50 %}...{% endif %}
+                         </option>
+                     {% endfor %}
+                 </select>
+                 {% if form.product.errors %}
+                     <div class="text-danger">
+                         {% for error in form.product.errors %}
+                             <p>{{ error }}</p>
+                         {% endfor %}
+                     </div>
+                 {% endif %}
+             </div>
+             {% elif type == 'Category Offer' %}
+             <div class="form-group mb-3">
+                 <label for="id_category" class="form-label">Category</label>
+                 {{ form.category }}
+                 {% if form.category.errors %}
+                     <div class="text-danger">
+                         {% for error in form.category.errors %}
+                             <p>{{ error }}</p>
+                         {% endfor %}
+                     </div>
+                 {% endif %}
+             </div>
+             {% endif %}
+
+            <div class="form-group mb-3">
+                <label for="id_is_active" class="form-label">Is Active</label>
+                {{ form.is_active }}
+                {% if form.is_active.errors %}
+                    <div class="text-danger">
+                        {% for error in form.is_active.errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+           
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-dark btn-lg">Save Offer</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

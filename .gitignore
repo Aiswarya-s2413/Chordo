@@ -1,0 +1,3 @@
+#.gitignore
+.env
+all_data.json

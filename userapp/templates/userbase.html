@@ -1,0 +1,139 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %} {% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'css/myuser.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- common navigation bar for all user pages -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="#">Chordo</a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+              <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="{% url 'userHome' %}">Home</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'userCategories' %}">Categories</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#">About Us</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="">Contact Us</a>
+              </li>
+            </ul>
+            <!-- Search Bar -->
+            <form class="d-flex me-3" role="search"  method="POST" action="{% url 'productList' %}">
+              {% csrf_token %}
+              <input class="form-control me-2 search-input" type="search" placeholder="Search" aria-label="Search" name='searchproduct'>
+              <button class="btn btn-outline-light" type="submit"><i class="fas fa-search"></i></button>
+            </form> 
+            {% if user.is_authenticated %}
+            <a href="{% url 'userProfile' %}" class="icon-link"><i class="fas fa-user"></i></a>
+            {% endif %}
+            <a href="{% url 'wishlist' %}" class="icon-link"><i class="far fa-heart"></i></a>
+            <a href="{% url 'userCart' %}" class="icon-link"><i class="fas fa-shopping-cart"></i></a>
+            {% if user.is_authenticated %}
+            <a href="{% url 'userLogout' %}" class="btn btn-outline-light btn-login">Logout</a>
+        {% else %}
+            <a href="{% url 'userLogin' %}" class="btn btn-outline-light btn-login">Login/Signup</a>
+        {% endif %}
+          </div>
+        </div>
+      </nav>
+      
+   
+    {% block content %}
+
+
+    {% endblock %}
+
+    <!-- Footer -->
+<footer class="footer-custom ">
+  <div class="container">
+      <div class="row">
+          <!-- Footer Logo and Contact -->
+          <div class="col-md-4 footer-logo">
+              Chordo
+              <div class="footer-contact mt-2">
+                  <i class="fas fa-phone-alt"></i> Got questions? Connect with us<br>
+                  +9198777555454
+              </div>
+          </div>
+
+          <!-- Information Section -->
+          <div class="col-md-2 footer-section">
+              <h5>Information</h5>
+              <ul>
+                  <li><a href="#">Home</a></li>
+                  <li><a href="#">Delivery</a></li>
+                  <li><a href="#">Shipping</a></li>
+                  <li><a href="#">Cancellation</a></li>
+                  <li><a href="#">Return & Refund</a></li>
+                  <li><a href="#">Privacy Policy</a></li>
+                  <li><a href="#">Terms and Conditions</a></li>
+              </ul>
+          </div>
+
+          <!-- Extra Section -->
+          <div class="col-md-2 footer-section">
+              <h5>Extra</h5>
+              <ul>
+                  <li><a href="#">About Us</a></li>
+                  <li><a href="#">FAQ</a></li>
+                  <li><a href="#">Contact Us</a></li>
+              </ul>
+          </div>
+
+          <!-- Customer Care Section -->
+          <div class="col-md-2 footer-section">
+              <h5>Customer Care</h5>
+              <ul>
+                  <li><a href="#">Shop</a></li>
+                  <li><a href="#">Cart</a></li>
+                  <li><a href="#">My Account</a></li>
+                  <li><a href="#">Wishlist</a></li>
+                  <li><a href="#">Orders</a></li>
+                  <li><a href="#">Track your Order</a></li>
+                  <li><a href="#">Customer Service</a></li>
+              </ul>
+          </div>
+
+          <!-- Social Icons -->
+          <div class="col-md-2 d-flex align-items-end">
+              <div class="social-icons">
+                  <a href="#"><i class="fab fa-facebook"></i></a>
+                  <a href="#"><i class="fab fa-twitter"></i></a>
+                  <a href="#"><i class="fab fa-instagram"></i></a>
+              </div>
+          </div>
+      </div>
+
+      <!-- Copyright -->
+      <div class="row">
+          <div class="col-12">
+              <div class="copyright">
+                  &copy; Chordo 2024. All rights reserved.
+              </div>
+          </div>
+      </div>
+  </div>
+</footer>
+    
+ 
+
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" ></script>
+    <script src="{% static 'js/myuser.js' %}"></script>
+</body>
+</html>

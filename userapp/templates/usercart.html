@@ -1,0 +1,116 @@
+{% extends 'userbase.html' %}
+{% load static %} 
+{% block title %}Cart{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h2>CART</h2>
+    {% if messages %}
+    <div class="alert-container" style="position: fixed; top: 0; left: 0; right: 0; z-index: 9999;">
+        {% for message in messages %}
+            <div class="alert alert-secondary alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+    <div class="cart-container">
+        <!-- Product List Section -->
+<div class="product-list">
+    {% if cart_items %}
+    {% for item in cart_items %}
+        <!-- Product Item Start -->
+        <div class="card mb-3">
+            <div class="row g-0">
+                <div class="col-md-3">
+                    <img src="{{  item.variant.images.first.image.url  }}" alt="{{ item.variant.product.name }}" class="img-fluid rounded-start">
+                </div>
+                <div class="col-md-9">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ item.variant.product.name }}</h5>
+                        <p class="card-text text-primary">Rs.{{ item.variant.get_display_price }}</p>
+                         {% if item.variant.quantity == 0 %}
+                      <p class="text-danger"><strong>Out of stock</strong></p>
+                         {% elif item.variant.quantity < 10 %}
+                      <p class="text-warning"><strong>Limited stock.Only {{item.variant.quantity}} remaining.</strong></p>
+                         {% else %}
+                         <p class="text-success"><strong>In stock</strong></p>   
+                         {% endif %}
+
+                        <div class="quantity-control">
+                            <form action="{% url 'updateCartItem' item.id %}" method="POST" class="d-flex align-items-center">
+                                {% csrf_token %}
+                                <button type='submit' name="quantity_change" value="-1" class="btn btn-outline-secondary" >-</button>
+                                <input type="text" value="{{ item.quantity }}" class="form-control text-center" style="width: 50px;" readonly>
+                                <button type='submit' name="quantity_change" value="1" class="btn btn-outline-secondary">+</button>
+                            </form>
+                        </div>
+                       
+                        <div class="d-flex justify-content-between mt-3">
+                            <a href="{% url 'addToWishlist' item.variant.id %}" class="text-muted">Move to wishlist</a>
+                            <a href="{% url 'removeFromCart' item.id %}" class="text-muted"><i class="bi bi-trash"></i> Remove</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+    {% else %}
+            <p class="text-center mt-3">No items in your cart</p>
+        {% endif %}
+</div>
+
+        <!-- Order Summary Section -->
+        <div class="order-summary">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Order details</h5>
+                    <p class="d-flex justify-content-between">
+                        <span>Bag total:</span><span>{{price_total}}</span>
+                    </p>
+                    <p class="d-flex justify-content-between">
+                        <span>Bag discount:</span><span>{% if discount > 0 %}- {{ discount }}{% else %}-{% endif %}</span>
+                    </p>
+                    <p class="d-flex justify-content-between">
+                        <span>Delivery fee:</span><span class="text-success">Rs.100</span>
+                    </p>
+                    <p class="d-flex justify-content-between fw-bold">
+                        <span>Order total:</span><span>Rs.{{order_total}}</span>
+                    </p>
+                    <a href="{% url 'userCheckout' %}" class="btn btn-dark w-100 
+               {% if price_total > 0 %}active{% else %}disabled{% endif %}">
+                PROCEED TO SHIPPING
+            </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Apply coupons</h5>
+                <form method="POST" action="{% url 'userCart' %}">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        {% if selected_coupon %}
+                            <select class="form-control" name="coupon_code" disabled>
+                                <option>{{ selected_coupon }}</option>
+                            </select>
+                            <button class="btn btn-secondary" name="remove_coupon" value="true" type="submit">Remove Coupon</button>
+                            <p class="text-success mt-2">Coupon applied: {{ selected_coupon }}</p>
+                        {% else %}
+                            <select class="form-control" name="coupon_code">
+                                <option value="">Select a coupon</option>
+                                {% for coupon in coupons %}
+                                    <option value="{{ coupon.code }}">{{ coupon.code }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-dark" type="submit">Apply</button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css">
+{% endblock %}

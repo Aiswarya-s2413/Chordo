@@ -1,0 +1,89 @@
+{% extends 'userbase.html' %}
+{% load static %} 
+{% block title %}Wishlist{% endblock %}
+{% block content %}
+    
+<div class="container-fluid mt-4">
+    <h2>My Wishlist</h2>
+    <div class="row">
+        <div id="cart-message"></div>
+        
+        <div class="row justify-content-center">
+            {% for item in wishlist_items %}
+            <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
+                <a href="{% url 'productView' item.variant.id %}" class="listlink">
+                    <div class="card list shadow-sm product-card">
+                        <!-- Product Image -->
+                        <img src="{{ item.variant.images.first.image.url }}" class="card-img-top product-image" alt="{{ item.images.first.alt_text }}">
+                        <div class="card-body position-relative">
+                            <h5 class="card-title list">{{ item.variant.product.name }}</h5>
+                            <div>
+                                <p class="card-text mb-0">Rs.{{ item.variant.get_display_price }}</p>
+                            </div>
+                            <div>
+                                <p class="card-text mb-0">Rating: 4.5/5</p>
+                            </div>
+                            <!-- Cart and Wishlist icons -->
+                            <div class="icon-container">
+                                <a href="#" class="cart-icon me-3" data-url="{% url 'addToCart' item.variant.id %}" onclick="addToCart(this)">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </a>
+                                <a href="{% url 'removeFromWishlist' item.id %}" class="wishlist-icon">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% empty %}
+        <p>No products in wishlist.</p>
+            {% endfor %}
+        </div>
+        
+ 
+        </div>
+    </div>
+    <script>
+        function addToCart(element) {
+            const url = element.getAttribute('data-url'); // Get the URL from the data-url attribute
+            const messageContainer = document.getElementById('cart-message'); // Get the message container
+        
+            fetch(url, { method: 'GET' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Display success message
+                        messageContainer.innerHTML = `<div class="alert alert-success" role="alert">
+                            ${data.message}
+                        </div>`;
+                    } else {
+                        // Display error message
+                        messageContainer.innerHTML = `<div class="alert alert-danger" role="alert">
+                            ${data.message}
+                        </div>`;
+                    }
+        
+                    // Automatically hide the message after 3 seconds
+                    setTimeout(() => {
+                        messageContainer.innerHTML = '';
+                    }, 3000);
+                })
+                .catch(error => {
+                    console.error('Error:', error); // Log the error to the console
+        
+                    // Display a generic error message
+                    messageContainer.innerHTML = `<div class="alert alert-danger" role="alert">
+                        An error occurred. Please try again later.
+                    </div>`;
+        
+                    // Automatically hide the message after 3 seconds
+                    setTimeout(() => {
+                        messageContainer.innerHTML = '';
+                    }, 3000);
+                });
+        }
+        
+        </script>  
+
+{% endblock %}

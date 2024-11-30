@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Add Product{% endblock %}
+{% block content %}
+
+        
+<div class="col-md-8 mx-auto">
+    <h2 class="text-center mb-4">Add New Product</h2>
+    <form method="post" enctype="multipart/form-data" class="custom-form">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">{{ product_form.name.label }}</label>
+            {{ product_form.name }} 
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ product_form.category.label }}</label>
+            {{ product_form.category }} 
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ product_form.description.label }}</label>
+            {{ product_form.description }}
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-dark">Add Product</button>
+        </div>
+    </form>
+</div>
+
+
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends 'userbase.html' %}
+{% load static %} 
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<div id="order-confirmation" class="d-flex justify-content-center align-items-center vh-100">
+    <div class="text-center p-4 border rounded shadow-lg bg-light">
+        <h4 class="text-success">Order Confirmed</h4>
+        <p>Your order was successfully placed. To see your order status, visit the order details page.</p>
+        <a href="{% url 'userHome' %}" class="order-close-btn btn btn-lg btn-dark">Continue Shopping</a>
+    </div>
+</div>
+
+{% endblock %}

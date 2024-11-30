@@ -1,0 +1,110 @@
+{% extends 'userbase.html' %}
+{% load static %} 
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="container-fluid mt-2">
+    <div class="row">
+        <!-- Profile Sidebar -->
+        <div class="col-md-3 col-sm-12 profile-sidebar m-md-3 mb-3">
+            <!-- Profile Image -->
+            <div class="d-flex flex-column align-items-center text-center mb-3">
+                {% if form.image.value %}
+                    <img src="{{ form.image.value.url }}" alt="Profile Image" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                {% else %}
+                    <img src="{% static 'images/blankpropic.webp' %}" alt="Profile Image" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                {% endif %}
+                <h4>{{ user.username }}</h4>
+                <p>{{ user.email }}</p>
+                <p>{{ form.phone_number.value|default:'No phone number added' }}</p>
+            </div>
+            
+            <a href="" class="text-decoration-none text-dark d-block mb-2">EDIT PROFILE</a>
+        
+            <!-- Dropdown Menu -->
+            <div class="dropdown mb-3">
+                <a class="btn  dropdown-toggle w-100" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">MY ORDERS</a>
+                <ul class="dropdown-menu w-100" aria-labelledby="dropdownMenuLink">
+                    <li><a class="dropdown-item" href="{% url 'trackOrder' %}">Track your orders</a></li>
+                    <li><a class="dropdown-item" href="{% url 'orderHistory' %}">Order History</a></li>
+                </ul>
+            </div>
+        
+            <!-- Sidebar Links -->
+            <a href="{% url 'addAddress' %}" class="text-decoration-none text-dark d-block mb-2">ADD ADDRESS</a>
+            <a href="{% url 'changePassword' %}" class="text-decoration-none text-dark d-block mb-2">CHANGE PASSWORD</a>
+            <a href="{% url 'myWallet' %}" class="text-decoration-none text-dark d-block mb-2">MY WALLET</a>
+        
+            <!-- Logout Button -->
+            <a href="{% url 'userLogout' %}" class="btn btn-dark ">Logout</a>
+        </div>
+        
+
+       <!-- Edit Profile Form -->
+<div class="col-md-8 col-sm-12 edit-profile-form m-3">
+    <h4>Edit Profile</h4>
+    
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row mb-5">
+            <div class="col-md-6">
+                <label for="id_name">Name</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                <div class="text-danger">
+                    {{ form.name.errors }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label for="id_gender">Gender</label> <br>
+                {{ form.gender }}
+                {% if form.gender.errors %}
+                <div class="text-danger">
+                    {{ form.gender.errors }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="row mb-5">
+            <div class="col-md-6">
+                <label for="id_email">Email</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                <div class="text-danger">
+                    {{ form.email.errors }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label for="id_phone_number">Mobile no.</label>
+                {{ form.phone_number }}
+                {% if form.phone_number.errors %}
+                <div class="text-danger">
+                    {{ form.phone_number.errors }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="row mb-5">
+            <div class="col-md-6">
+                <label for="id_image">Profile Image</label> <br>
+                {{ form.image }}
+                {% if form.image.errors %}
+                <div class="text-danger">
+                    {{ form.image.errors }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="row justify-content-center mt-4">
+            <button type="submit" class="btn btn-save btn-success btn-lg">Save</button>
+        </div>
+    </form>
+    {% if form.non_field_errors %}
+    <div class="text-danger">
+        {{ form.non_field_errors }}
+    </div>
+{% endif %}
+</div>
+
+{% endblock %}

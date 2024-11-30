@@ -1,0 +1,80 @@
+{% extends 'userbase.html' %}
+{% load static %} 
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="container-fluid mt-2">
+    <div class="row">
+        <!-- Profile Sidebar -->
+        <div class="col-md-3 col-sm-12 profile-sidebar m-md-3 mb-3">
+            <div class="d-flex flex-column align-items-center text-center mb-3">
+                {% if form.image.value %}
+                    <img src="{{ form.image.value.url }}" alt="Profile Image" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                {% else %}
+                    <img src="{% static 'images/blankpropic.webp' %}" alt="Profile Image" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                {% endif %}
+                <h4>{{ user.username }}</h4>
+                <p>{{ user.email }}</p>
+                <p>{{ form.phone_number.value|default:'No phone number added' }}</p>
+            </div>
+
+            <a href="{% url 'userProfile' %}" class="text-decoration-none text-dark d-block mb-2">EDIT PROFILE</a>
+
+            <div class="dropdown mb-3">
+                <a class="btn dropdown-toggle w-100" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">MY ORDERS</a>
+                <ul class="dropdown-menu w-100" aria-labelledby="dropdownMenuLink">
+                    <li><a class="dropdown-item" href="{% url 'trackOrder' %}">Track your orders</a></li>
+                    <li><a class="dropdown-item" href="{% url 'orderHistory' %}">Order History</a></li>
+                </ul>
+            </div>
+
+            <a href="" class="text-decoration-none text-dark d-block mb-2">ADD ADDRESS</a>
+            <a href="{% url 'changePassword' %}" class="text-decoration-none text-dark d-block mb-2">CHANGE PASSWORD</a>
+            <a href="{% url 'myWallet' %}" class="text-decoration-none text-dark d-block mb-2">MY WALLET</a>
+            <a href="{% url 'userLogout' %}" class="btn btn-dark ">Logout</a>
+        </div>
+        
+        
+        {% if orders %}
+        <div class="col-md-8">
+            <h1 class="text-center mb-4">Unpaid Orders</h1>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Order ID</th>
+                            <th scope="col">Total Price</th>
+                            <th scope="col">Delivery Charge</th>
+                            <th scope="col">Final Total</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                            <tr>
+                                <th scope="row">{{ forloop.counter }}</th>
+                                <td>{{ order.id }}</td>
+                                <td>₹{{ order.discount_amount|floatformat:2 }}</td>
+                                <td>₹{{ order.delivery_charge|floatformat:2 }}</td>
+                                <td>₹{{ order.total_final|floatformat:2 }}</td>
+                                <td>
+                                    <a href="" class="btn btn-primary btn-sm">
+                                        Retry Payment
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-warning text-center" role="alert">
+                No unpaid orders found.
+            </div>
+        {% endif %}
+    </div>
+    </div>
+</div>
+
+
+{% endblock %}

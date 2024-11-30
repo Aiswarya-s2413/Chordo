@@ -1,0 +1,87 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'css/myuser.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="#">Chordo</a>
+         </div>
+      </nav>
+<div class="otp-page">
+    <div class="otp-container">
+        <h2>Enter the OTP</h2>
+        
+        <form action="" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+        <div class="otp-input text-center" >
+            <input type="text" name="otp" maxlength="4">
+            {% if error %}
+            <p style="color: red;">{{ error }}</p>
+            {% endif %}
+        </div>
+        
+        <button type="submit" class="btn btn-submit mt-4">SUBMIT</button>
+    </form>
+        <div class="timer mt-3">
+            <span id="countdown">1:00</span>
+        </div>
+
+        <p class="mt-2"><a href="{% url 'resend_otp' %}" class="resend-link" id="resend-otp">Didn't get OTP? Resend</a></p>
+    
+    </div>
+</div>
+<script>
+    // Timer Functionality
+    var countdownElement = document.getElementById('countdown');
+    var resendLink = document.getElementById('resend-otp');
+    
+    // Get time_left from Django and convert it to an integer
+    var timeLeft = "{{ time_left|default:0 }}";
+    timeLeft = parseInt(timeLeft);
+
+    // Function to start the timer countdown
+    function startTimer(timeLeft) {
+        var timerInterval = setInterval(function() {
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                countdownElement.innerHTML = "00:00";
+                resendLink.style.visibility = 'visible';
+            } else {
+                var minutes = parseInt(timeLeft / 60, 10);
+                var seconds = parseInt(timeLeft % 60, 10);
+
+                // Format minutes and seconds to always show two digits
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                // Update the countdown display
+                countdownElement.innerHTML = minutes + ":" + seconds;
+                
+                // Decrease the remaining time
+                timeLeft--;
+            }
+        }, 1000);
+    }
+
+    // Initially hide the resend link if timeLeft is more than 0
+    if (timeLeft > 0) {
+        resendLink.style.visibility = 'hidden';
+        startTimer(timeLeft); // Start the countdown
+    } else {
+        resendLink.style.visibility = 'visible';
+        countdownElement.innerHTML = "00:00";
+    }
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" ></script>
+</body>
+</html>

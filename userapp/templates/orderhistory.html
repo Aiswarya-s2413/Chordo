@@ -1,0 +1,197 @@
+{% extends 'userbase.html' %}
+{% load static %} 
+{% block title %}Order History{% endblock %}
+{% block content %}
+<div class="container-fluid mt-2">
+    {% if messages %}
+    <div class="alert-container" style="position: fixed; top: 0; left: 0; right: 0; z-index: 9999;">
+        {% for message in messages %}
+            <div class="alert alert-secondary alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <!-- Profile Sidebar -->
+        <div class="col-md-3 col-sm-12 profile-sidebar m-md-3 mb-3 sidebar-height" style="height: 80vh;">
+            <div class="d-flex flex-column align-items-center text-center mb-3">
+                {% if form.image.value %}
+                    <img src="{{ form.image.value.url }}" alt="Profile Image" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                {% else %}
+                    <img src="{% static 'images/blankpropic.webp' %}" alt="Profile Image" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                {% endif %}
+                <h4>{{ user.username }}</h4>
+                <p>{{ user.email }}</p>
+                <p>{{ form.phone_number.value|default:'No phone number added' }}</p>
+            </div>
+
+            <a href="{% url 'userProfile' %}" class="text-decoration-none text-dark d-block mb-2">EDIT PROFILE</a>
+
+            <div class="dropdown mb-3">
+                <a class="btn dropdown-toggle w-100" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">MY ORDERS</a>
+                <ul class="dropdown-menu w-100" aria-labelledby="dropdownMenuLink">
+                    <li><a class="dropdown-item" href="{% url 'trackOrder' %}">Track your orders</a></li>
+                    <li><a class="dropdown-item" href="{% url 'orderHistory' %}">Order History</a></li>
+                </ul>
+            </div>
+
+            <a href="{% url 'addAddress' %}" class="text-decoration-none text-dark d-block mb-2">ADD ADDRESS</a>
+            <a href="{% url 'changePassword' %}" class="text-decoration-none text-dark d-block mb-2">CHANGE PASSWORD</a>
+            <a href="{% url 'myWallet' %}" class="text-decoration-none text-dark d-block mb-2">MY WALLET</a>
+            <a href="{% url 'userLogout' %}" class="btn btn-dark ">Logout</a>
+        </div>
+        
+        <div class="col-md-8 col-sm-12">
+            <h2 class="text-center mb-4">Order History</h2>
+            <div class="mb-4">
+                <a href="?status=all" class="btn btn-dark mx-1">All</a>
+                <a href="?status=delivered" class="btn btn-dark mx-1">Delivered</a>
+                <a href="?status=cancelled" class="btn btn-dark mx-1">Cancelled</a>
+                <a href="?status=returned" class="btn btn-dark mx-1">Returned</a>
+            </div>
+            {% if orders %}
+            {% for item in orders %}
+            <div class="card mb-4 shadow-sm p-4" style="background-color: #f5f5f5;">
+                <div class="d-flex mb-1 align-items-start">
+                    <div class="me-4">
+                        <img src="{{ item.variant.images.first.image.url }}" alt="Product Image" style="width: 100px; height: 100px; object-fit: cover;">
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-1">{{ item.variant.product.name }}</h5>
+                        <p class="text-secondary mb-3">{{ item.get_status_display }}</p>
+                    </div>
+                     <div class="position-absolute top-0 end-0 m-3">
+        <button class="btn btn-secondary btn-small"  data-bs-toggle="modal" data-bs-target="#orderDetailsModal{{ item.id }}">
+            ... 
+        </button>
+    </div>
+    <div class="modal fade" id="orderDetailsModal{{ item.id }}" tabindex="-1" aria-labelledby="orderDetailsModalLabel{{ item.id }}" aria-hidden="true" style="z-index: 2000;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="orderDetailsModalLabel{{ item.id }}">Order Details</h5>
+                    <!-- <button type="button" class="btn-close " data-bs-dismiss="modal" aria-label="Close"></button> -->
+                </div>
+                <div class="modal-body">
+                    <div class="container">
+                        <div class="row mb-3 p-2 border-bottom">
+                            <div class="col-md-6">
+                                <h6 class="text-secondary">Order Information</h6>
+                                <p><strong>Order Date:</strong> {{ item.placed_at|date:"Y-m-d H:i" }}</p>
+                                <p><strong>Shipping Address:</strong> {{ item.order.shipping_address }}</p>
+                                <p><strong>Payment Mode:</strong> {{item.order.payment_method}} </p>
+                                <p><strong>Payment Status:</strong>
+                                    <span
+                                        class="badge {% if item.order.is_paid %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if item.order.is_paid %}Paid{% else %}Unpaid{% endif %}
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-secondary">Customer Information</h6>
+                                <p><strong>User:</strong> {{ item.order.user.username }}</p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <ul class="list-group">
+                                    <li
+                                        class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ item.variant.product.name }}({{item.variant.color}})</strong><br>
+                                            <span>Quantity: {{ item.quantity }}</span><br>
+                                        </div>
+                                        <span class="badge bg-dark rounded-pill">Rs.{{ item.get_total_price}}</span>
+                                    </li>
+                                    
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+                </div>
+                
+                            {% if item.status == "delivered" or item.status == "returned" %}
+                <div class="d-flex justify-content-end gap-2">
+                    {% if item.status == "delivered" %}
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#returnOrderModal{{ item.id }}">
+                            Return Order
+                        </button>
+                    {% endif %}
+                    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#reviewOrderModal{{ item.id }}">
+                        Add a review
+                    </button>
+                </div>
+                {% endif %}
+                <!-- {% if not item.order.is_paid %}
+                <a href="{% url 'retryPayment' item.order.id %}" class="btn btn-warning">Complete Payment</a>
+            {% endif %} -->
+
+            </div>
+
+            <!-- Add Review Modal -->
+            <div class="modal fade" id="reviewOrderModal{{ item.id }}" tabindex="-1" aria-labelledby="reviewOrderModalLabel" aria-hidden="true" style="z-index: 1055;">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="reviewOrderModalLabel">Add a Review</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form method="post" action="{% url 'addReview' item.id %}">
+                                {% csrf_token %}
+                                {{ review_form.as_p }}
+                                <button type="submit" class="btn btn-dark mt-2">Submit Review</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Return Order Modal -->
+            <div class="modal fade" id="returnOrderModal{{ item.id }}" tabindex="-1" aria-labelledby="returnOrderModalLabel" aria-hidden="true"  style="z-index: 1055;" >
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="returnOrderModalLabel">Return Order</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form action="{% url 'returnOrder' item.id %}" method="post">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="returnReason" class="form-label">Reason for Return</label>
+                                    <textarea class="form-control" id="returnReason" name="return_reason" rows="3"></textarea>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-danger">Return Order</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% endfor %}
+            {% else %}
+                <p class="text-center">Order history is empty.</p>
+                {% endif %}
+        </div>
+    </div>
+</div>
+
+
+
+
+{% endblock %}

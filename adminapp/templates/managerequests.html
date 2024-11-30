@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Admin Products{% endblock %}
+{% block content %}
+
+{% if messages %}
+  <div class="alert-container" style="position: fixed; top: 0; left: 0; right: 0; z-index: 9999;">
+      {% for message in messages %}
+          <div class="alert alert-secondary alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+      {% endfor %}
+  </div>
+{% endif %}
+<!-- Main Content -->
+<div class="col-md-10 container-main py-4">
+    <div class="col-12">
+        <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4 rounded shadow-sm">
+            <div class="container-fluid">
+                <h3 class="navbar-brand mb-0">Requests</h3>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggleContent" aria-controls="navbarToggleContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+            </div>
+        </nav>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Pending Requests</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Item</th>
+                            <th>User</th>
+                            <th>Request Type</th>
+                            <th>Reason</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request in pending_requests %}
+                        <tr>
+                            <td>{{ request.order.id }}</td>
+                            <td>{{ request.variant.product.name }}</td>
+                            <td>{{ request.order.user.username }}</td>
+                            <td>{{ request.get_request_type_display }}</td>
+                            <td>
+                                {% if request.request_type == 'cancel' %}
+                                    {{ request.cancellation_reason }}
+                                {% elif request.request_type == 'return' %}
+                                    {{ request.return_reason }}
+                                {% endif %}
+                            </td>
+                            <td>{{ request.request_date }}</td>
+                            <td>
+                                <form method="POST" class="d-flex justify-content-around">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="order_item_id" value="{{ request.id }}">
+                                    <button type="submit" name="action" value="approve" class="btn btn-sm btn-success">Approve</button>
+                                    <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                <tr>
+                    <td colspan="6">No requests currently..</td>
+                </tr>
+                        {% endfor %}
+                        
+                
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+{% endblock %}

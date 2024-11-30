@@ -1,0 +1,68 @@
+{% extends 'userbase.html' %}
+{% load static %} 
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="container-fluid mt-2">
+    <div class="row">
+        <!-- Profile Sidebar -->
+        <div class="col-md-3 col-sm-12 profile-sidebar m-md-3 mb-3">
+            <div class="d-flex flex-column align-items-center text-center mb-3">
+                {% if form.image.value %}
+                    <img src="{{ form.image.value.url }}" alt="Profile Image" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                {% else %}
+                    <img src="{% static 'images/blankpropic.webp' %}" alt="Profile Image" class="img-fluid rounded-circle mb-3" style="max-width: 150px;">
+                {% endif %}
+                <h4>{{ user.username }}</h4>
+                <p>{{ user.email }}</p>
+                <p>{{ form.phone_number.value|default:'No phone number added' }}</p>
+            </div>
+
+            <a href="{% url 'userProfile' %}" class="text-decoration-none text-dark d-block mb-2">EDIT PROFILE</a>
+
+            <div class="dropdown mb-3">
+                <a class="btn dropdown-toggle w-100" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">MY ORDERS</a>
+                <ul class="dropdown-menu w-100" aria-labelledby="dropdownMenuLink">
+                    <li><a class="dropdown-item" href="{% url 'trackOrder' %}">Track your orders</a></li>
+                    <li><a class="dropdown-item" href="{% url 'orderHistory' %}">Order History</a></li>
+                </ul>
+            </div>
+
+            <a href="" class="text-decoration-none text-dark d-block mb-2">ADD ADDRESS</a>
+            <a href="{% url 'changePassword' %}" class="text-decoration-none text-dark d-block mb-2">CHANGE PASSWORD</a>
+            <a href="{% url 'myWallet' %}" class="text-decoration-none text-dark d-block mb-2">MY WALLET</a>
+            <a href="{% url 'userLogout' %}" class="btn btn-dark ">Logout</a>
+        </div>
+        <div class="col-md-8 col-sm-12">
+             <div class="row justify-content-center">
+                <h3 class="text-center mb-4">Add Money to Wallet</h3>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="amount" class="form-label">Enter Amount</label>
+            <input type="number" name="amount" id="amount" class="form-control" required min="1">
+        </div>
+        <button type="submit" class="btn btn-dark btn-lg w-100">Proceed to Payment</button>
+    </form>
+    {% if razorpay_order_id %}
+        <form id="payment-form" action="{{ callback_url }}" method="POST">
+            {% csrf_token %}
+            <script src="https://checkout.razorpay.com/v1/checkout.js"
+                data-key="{{ razorpay_key }}"
+                data-amount="{{ amount|floatformat:2 }}"
+                data-currency="INR"
+                data-order_id="{{ razorpay_order_id }}"
+                data-buttontext="Pay with Razorpay"
+                data-name="E-commerce Wallet"
+                data-description="Add money to wallet"
+                data-theme.color="#F37254">
+            </script>
+            <input type="hidden" name="amount" value="{{ amount }}">
+        </form>
+    {% endif %}
+            </div>
+        </div>
+
+
+    </div>
+</div>
+{% endblock %}

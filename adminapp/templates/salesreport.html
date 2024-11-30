@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #000;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sales Report</h1>
+    <h2>{{ start_date }} to {{ end_date }}</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Order ID</th>
+                <th>Total Sales</th>
+                <th>Discount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in sales_data %}
+            <tr>
+                <td>{{ order.created_at|date:"Y-m-d" }}</td>
+                <td>{{ order.id }}</td>
+                <td>Rs.{{ order.total_price }}</td>
+                <td>Rs.{{ order.discount_amount }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Total Sales: Rs.{{ total_sales }}</h3>
+    <h3>Total Discounts: Rs.{{ total_discounts }}</h3>
+    <h3>Net Sales: Rs.{{ net_sales }}</h3>
+</body>
+</html>

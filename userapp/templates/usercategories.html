@@ -1,0 +1,25 @@
+{% extends 'userbase.html' %}
+{% load static %} 
+{% block title %}Categories{% endblock %}
+{% block content %}
+
+
+
+<!-- Categories Section -->
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Categories</h2>
+    <div class="row">
+        {% for category in categories %}
+        <div class="col-12 col-md-4 mb-4">
+            <div class="category-box">
+                <div class="category-box-icon">
+                    <i class="fas fa-music"></i>
+                </div>
+                <a href="{% url 'categoryList' category.id %}">{{ category.name }}</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
