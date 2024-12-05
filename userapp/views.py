@@ -24,7 +24,7 @@ from django.utils.timezone import now
 from django.template.loader import render_to_string
 from xhtml2pdf import pisa
 from django.http import HttpResponse
-
+from django.db.models import Q, Count, F
 
 @never_cache
 def userSignup(request):
@@ -625,7 +625,24 @@ def userCart(request):
     price_total = sum(item.get_total_price() for item in cart_items)
     discount = 0
     selected_coupon = request.POST.get('coupon_code')
-
+    
+    available_coupons = Coupon.objects.filter(
+        expiry_date__gte=now(),  # Not expired
+        is_active=True
+    ).annotate(
+        user_coupon_count=Count('usercoupon', filter=models.Q(
+            usercoupon__user=request.user
+        )),
+        total_coupon_use_count=Count('usercoupon')
+    ).filter(
+        # Check individual user usage
+        Q(max_use_per_user__isnull=True) | 
+        Q(max_use_per_user__gt=models.F('user_coupon_count'))
+    ).filter(
+        # Check total coupon usage if max_total_use is set
+        Q(max_total_use__isnull=True) | 
+        Q(max_total_use__gt=models.F('total_coupon_use_count'))
+    )
     # Handle coupon removal
     if request.POST.get('remove_coupon'):
         selected_coupon = None
@@ -648,25 +665,15 @@ def userCart(request):
             elif coupon.min_order_amount and price_total < coupon.min_order_amount:
                 messages.error(request, f"Minimum order amount to use this coupon is ₹{coupon.min_order_amount}.")
             else:
-                # Apply discount
+                request.session['selected_coupon'] = coupon.code
                 if coupon.discount_type == 'fixed':
                     discount = coupon.discount_value
                 elif coupon.discount_type == 'percentage':
                     discount = (price_total * coupon.discount_value) / 100
 
-                # Add or update UserCoupon entry
-                user_coupon, created = UserCoupon.objects.get_or_create(
-                    user=request.user,
-                    coupon=coupon,
-                    defaults={'use_count': 0}
-                )
 
-                # Increment the use count if the coupon is being applied
-                user_coupon.use_count += 1
-                user_coupon.save()
 
-                # Save the selected coupon in session
-                request.session['selected_coupon'] = coupon.code
+                request.session['discount'] = float(discount)
                 messages.success(request, f"Coupon '{coupon.code}' applied successfully!")
         
         except Coupon.DoesNotExist:
@@ -679,7 +686,7 @@ def userCart(request):
     return render(request, 'usercart.html', {
         'cart_items': cart_items,
         'price_total': price_total,
-        'coupons': coupons,
+        'coupons': available_coupons,
         'discount': discount,
         'order_total': order_total,
         'selected_coupon': request.session.get('selected_coupon')
@@ -811,10 +818,11 @@ def userCheckout(request):
             return redirect('userCheckout')
 
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
+        selected_coupon_code = request.session.get('selected_coupon')
 
         if payment_method == 'cashOnDelivery':
             if total_with_delivery>1000:
-                messages.error(request,"COD only available for orders above Rs.1000.")
+                messages.error(request,"COD only available for orders below Rs.1000.")
                 return redirect('userCheckout')
             with transaction.atomic():
                 order = Order.objects.create(
@@ -826,6 +834,36 @@ def userCheckout(request):
                     is_paid=False,
                     payment_method='cashOnDelivery'
                 )
+                if selected_coupon_code:
+                    try:
+                        coupon = Coupon.objects.get(code=selected_coupon_code)
+                        
+                        # Check coupon validity again before finalizing the order
+                        if (coupon.expiry_date <= timezone.now() or 
+                            UserCoupon.objects.filter(
+                                user=request.user,
+                                coupon=coupon,
+                                use_count__gte=coupon.max_use_per_user
+                            ).exists()):
+                            # If coupon is invalid, remove it from session
+                            request.session.pop('selected_coupon', None)
+                        else:
+                            # Increment coupon use count
+                            user_coupon, created = UserCoupon.objects.get_or_create(
+                                user=request.user,
+                                coupon=coupon,
+                                defaults={'use_count': 0}
+                            )
+                            user_coupon.use_count += 1
+                            user_coupon.save()
+                            
+                            # Optionally, clear the coupon from session after use
+                            request.session.pop('selected_coupon', None)
+                    
+                    except Coupon.DoesNotExist:
+                        # Handle case where coupon might have been deleted
+                        request.session.pop('selected_coupon', None)
+
 
                 for item in cart_items:
                     OrderItem.objects.create(
@@ -841,6 +879,8 @@ def userCheckout(request):
 
                 cart_items.delete()
                 order_placed = True
+
+                request.session.pop('discount', None)
 
         elif payment_method == 'razorPay':
             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
@@ -898,6 +938,36 @@ def userCheckout(request):
                         payment_method='wallet'
                     )
 
+                    if selected_coupon_code:
+                        try:
+                            coupon = Coupon.objects.get(code=selected_coupon_code)
+                        
+                        # Check coupon validity again before finalizing the order
+                            if (coupon.expiry_date <= timezone.now() or 
+                                UserCoupon.objects.filter(
+                                    user=request.user,
+                                    coupon=coupon,
+                                    use_count__gte=coupon.max_use_per_user
+                                ).exists()):
+                            # If coupon is invalid, remove it from session
+                                request.session.pop('selected_coupon', None)
+                            else:
+                            # Increment coupon use count
+                                user_coupon, created = UserCoupon.objects.get_or_create(
+                                    user=request.user,
+                                    coupon=coupon,
+                                    defaults={'use_count': 0}
+                                )
+                                user_coupon.use_count += 1
+                                user_coupon.save()
+                            
+                            # Optionally, clear the coupon from session after use
+                                request.session.pop('selected_coupon', None)
+                    
+                        except Coupon.DoesNotExist:
+                        # Handle case where coupon might have been deleted
+                            request.session.pop('selected_coupon', None)
+
                     for item in cart_items:
                         OrderItem.objects.create(
                             order=order,
@@ -912,6 +982,7 @@ def userCheckout(request):
 
                     cart_items.delete()
                     order_placed = True
+                    request.session.pop('discount', None)
 
             else:
                 messages.error(request, "Insufficient balance in your wallet.")
@@ -941,6 +1012,7 @@ def verifyPayment(request):
         razorpay_order_id = request.POST.get("razorpay_order_id")
         razorpay_signature = request.POST.get("razorpay_signature")
         cart_items = CartItem.objects.filter(cart__user=request.user).select_related('variant')
+        selected_coupon_code = request.session.get('selected_coupon')
         # Initialize Razorpay client 
         client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
 
@@ -960,6 +1032,35 @@ def verifyPayment(request):
             order_item = OrderItem.objects.filter(order=order.id)
             order.is_paid = True
             order.save()
+            if selected_coupon_code:
+                    try:
+                        coupon = Coupon.objects.get(code=selected_coupon_code)
+                        
+                        # Check coupon validity again before finalizing the order
+                        if (coupon.expiry_date <= timezone.now() or 
+                            UserCoupon.objects.filter(
+                                user=request.user,
+                                coupon=coupon,
+                                use_count__gte=coupon.max_use_per_user
+                            ).exists()):
+                            # If coupon is invalid, remove it from session
+                            request.session.pop('selected_coupon', None)
+                        else:
+                            # Increment coupon use count
+                            user_coupon, created = UserCoupon.objects.get_or_create(
+                                user=request.user,
+                                coupon=coupon,
+                                defaults={'use_count': 0}
+                            )
+                            user_coupon.use_count += 1
+                            user_coupon.save()
+                            
+                            # Optionally, clear the coupon from session after use
+                            request.session.pop('selected_coupon', None)
+                    
+                    except Coupon.DoesNotExist:
+                        # Handle case where coupon might have been deleted
+                        request.session.pop('selected_coupon', None)
             for item in order_item:
                 item.status = 'order_recieved'
                 item.save()
@@ -967,7 +1068,7 @@ def verifyPayment(request):
                 item.variant.save()
           
             cart_items.delete()
-                
+            request.session.pop('discount', None)
             
 
             return render(request,'verifypayment.html')
