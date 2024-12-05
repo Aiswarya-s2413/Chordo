@@ -26,9 +26,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-a$x3%vp!^u5koua=yytuqy6rzma&k4jn%qbn@#bko*u=f_f5@0'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['chordo.site', '13.210.159.129']
 
 
 # Application definition
@@ -153,7 +153,7 @@ STATICFILES_DIRS = [
 ]
 
 STATIC_ROOT = os.path.join(BASE_DIR,'staticfiles')
-
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -184,6 +184,10 @@ SOCIALACCOUNT_PROVIDERS = {
             'profile',  # Request profile information
             'email',    # Request email address
         ],
+        'APP': {
+            'client_id': config('GOOGLE_CLIENT_ID'),
+            'secret': config('GOOGLE_CLIENT_SECRET'),
+        },
         'AUTH_PARAMS': {
             'access_type': 'online',  # Request online access
         },
@@ -211,4 +215,13 @@ AWS_S3_REGION_NAME = 'ap-southeast-2'
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL =  None
 AWS_S3_VERITY = True
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage' 
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://chordo.site',
+    'http://13.210.159.129',
+    'https://www.chordo.site',
+]
+
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
