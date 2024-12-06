@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-a$x3%vp!^u5koua=yytuqy6rzma&k4jn%qbn@#bko*u=f_f5@0'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['chordo.site', '13.210.159.129']
 
@@ -177,6 +177,10 @@ AUTHENTICATION_BACKENDS = (
 ACCOUNT_EMAIL_VERIFICATION = 'none'  
 ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = True  # Automatically redirect after login
 LOGIN_REDIRECT_URL = 'userHome'  # URL to redirect to after successful login
+
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
