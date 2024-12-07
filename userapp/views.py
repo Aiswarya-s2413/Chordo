@@ -184,7 +184,8 @@ def resend_otp(request):
 @never_cache
 def userLogin(request):
     if request.user.is_authenticated:
-            return redirect('userHome')
+        return redirect('userHome')
+
     if request.method == 'POST':
         email = request.POST.get('username')  # This is email input 
         password = request.POST.get('password')
@@ -204,16 +205,24 @@ def userLogin(request):
         # Authenticate using the email and password
         user = authenticate(request, username=email, password=password)
 
-
         if user is not None:
+            try:
+                # Attempt to fetch the SocialApp for Google to ensure no issues
+                google_app = SocialApp.objects.get(provider='google')
+            except SocialApp.DoesNotExist:
+                messages.error(request, 'Google login is not configured. Please contact support.')
+                return redirect('userLogin')
+            except MultipleObjectsReturned:
+                messages.error(request, 'Configuration error: Duplicate Google login setup. Please contact support.')
+                return redirect('userLogin')
+
             login(request, user)
-            return redirect('userHome')  
+            return redirect('userHome')
         else:
             messages.warning(request, 'Invalid email or password')
             return redirect('userLogin')
 
     return render(request, 'userlogin.html')
-
     
 
 def userLogout(request):
