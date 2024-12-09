@@ -610,74 +610,70 @@ def changePassword(request):
 def userCart(request):
     if not request.user.is_authenticated:
         messages.error(request, "Please log in to view your cart.")
-        return redirect('login')  # Adjust to your login URL name
+        return redirect('login')
 
     try:
-        # Ensure user exists and is valid before queries
         cart, created = Cart.objects.get_or_create(user=request.user)
         
         cart_items = CartItem.objects.filter(cart=cart)
-        
-        # Add a safety check for cart_items
-        if not cart_items.exists():
-            messages.info(request, "Your cart is empty.")
-        
-        # Safely calculate total price
-        try:
-            price_total = sum(
-                item.get_total_price() 
-                for item in cart_items 
-                if hasattr(item, 'get_total_price')
-            )
-        except Exception as price_error:
-            # Log the error
-            print(f"Error calculating price: {price_error}")
-            price_total = 0
-            messages.error(request, "Unable to calculate cart total.")
-
+        price_total = sum(item.get_total_price() for item in cart_items)
         discount = 0
-        selected_coupon = request.POST.get('coupon_code')
 
-        # Safe coupon retrieval
+        # Comprehensive coupon debugging
         try:
-            available_coupons = Coupon.objects.filter(
+            # Detailed coupon query with comprehensive filtering
+            available_coupons = Coupon.objects.annotate(
+                user_coupon_count=Count('usercoupon', filter=Q(
+                    usercoupon__user=request.user
+                ))
+            ).filter(
+                # Check expiry
                 expiry_date__gt=now(),
-                is_active=True
+                
+                # Optional: Additional active check if needed
+                # Uncomment if you have an is_active field
+                # is_active=True
+            ).filter(
+                # User-specific usage limit check
+                Q(max_use_per_user__isnull=True) | 
+                Q(max_use_per_user__gt=F('user_coupon_count'))
+            ).filter(
+                # Total usage limit check
+                Q(max_total_use__isnull=True) | 
+                Q(max_total_use__gt=Count('usercoupon'))
             )
+
+            # Extensive debugging print statements
+            print("Debug Coupon Retrieval:")
+            print(f"Current Timestamp: {now()}")
+            print(f"Total Coupons in DB: {Coupon.objects.count()}")
+            print(f"Available Coupons Count: {available_coupons.count()}")
+
+            # Detailed coupon information
+            for coupon in available_coupons:
+                print("\nCoupon Details:")
+                print(f"Code: {coupon.code}")
+                print(f"Expiry Date: {coupon.expiry_date}")
+                print(f"Max Total Use: {coupon.max_total_use}")
+                print(f"Max Use Per User: {coupon.max_use_per_user}")
+                print(f"Current User Coupon Count: {coupon.user_coupon_count}")
+
         except Exception as coupon_error:
-            print(f"Coupon retrieval error: {coupon_error}")
+            # Comprehensive error logging
+            print(f"Full Coupon Retrieval Error: {coupon_error}")
+            messages.error(request, f"Coupon Retrieval Error: {coupon_error}")
             available_coupons = Coupon.objects.none()
-            messages.error(request, "Unable to retrieve available coupons.")
-
-        # Coupon application logic with more error checking
-        if selected_coupon:
-            try:
-                coupon = Coupon.objects.get(code=selected_coupon)
-                # Your existing coupon validation logic
-            except Coupon.DoesNotExist:
-                messages.error(request, "Invalid coupon code.")
-                selected_coupon = None
-            except Exception as coupon_error:
-                print(f"Coupon application error: {coupon_error}")
-                messages.error(request, "An error occurred while applying the coupon.")
-                selected_coupon = None
-
-        # Calculate final total with safety checks
-        order_total = max(0, (price_total - discount + 100))
 
         return render(request, 'usercart.html', {
             'cart_items': cart_items,
             'price_total': price_total,
             'coupons': available_coupons,
             'discount': discount,
-            'order_total': order_total,
-            'selected_coupon': selected_coupon
         })
 
     except Exception as e:
-        # Comprehensive error logging
         print(f"Unexpected error in userCart: {e}")
-        messages.error(request, "An unexpected error occurred. Please try again.")
+        messages.error(request, f"An unexpected error occurred: {e}")
         return render(request, 'usercart.html', {'error': str(e)})
 
 
