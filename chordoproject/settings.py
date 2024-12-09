@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-a$x3%vp!^u5koua=yytuqy6rzma&k4jn%qbn@#bko*u=f_f5@0'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['chordo.site', '13.210.159.129']
 
