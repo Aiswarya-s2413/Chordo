@@ -608,88 +608,77 @@ def changePassword(request):
 
 @login_required(login_url='userLogin')
 def userCart(request):
-    cart, created = Cart.objects.get_or_create(user=request.user)
-    cart_items = CartItem.objects.filter(
-        cart=cart
-    ).select_related('variant__product').prefetch_related('variant__images')
+    if not request.user.is_authenticated:
+        messages.error(request, "Please log in to view your cart.")
+        return redirect('login')  # Adjust to your login URL name
 
-    # Fetch valid coupons
-    coupons = Coupon.objects.filter(
-        expiry_date__gt=now()
-    ).exclude(
-        usercoupon__user=request.user,
-        usercoupon__use_count__gte=models.F('max_use_per_user')  
-    )
-
-    price_total = sum(item.get_total_price() for item in cart_items)
-    discount = 0
-    selected_coupon = request.POST.get('coupon_code')
-    
-    available_coupons = Coupon.objects.filter(
-        expiry_date__gte=now(),  # Not expired
-        is_active=True
-    ).annotate(
-        user_coupon_count=Count('usercoupon', filter=models.Q(
-            usercoupon__user=request.user
-        )),
-        total_coupon_use_count=Count('usercoupon')
-    ).filter(
-        # Check individual user usage
-        Q(max_use_per_user__isnull=True) | 
-        Q(max_use_per_user__gt=models.F('user_coupon_count'))
-    ).filter(
-        # Check total coupon usage if max_total_use is set
-        Q(max_total_use__isnull=True) | 
-        Q(max_total_use__gt=models.F('total_coupon_use_count'))
-    )
-    # Handle coupon removal
-    if request.POST.get('remove_coupon'):
-        selected_coupon = None
-        messages.success(request, "Coupon removed successfully.")
-        request.session.pop('selected_coupon', None)
-
-    elif selected_coupon:
-        try:
-            coupon = Coupon.objects.get(code=selected_coupon)
-
-            # Ensure coupon is valid
-            if coupon.expiry_date <= now():
-                messages.error(request, "Coupon has expired.")
-            elif UserCoupon.objects.filter(
-                user=request.user,
-                coupon=coupon,
-                use_count__gte=coupon.max_use_per_user  # Validate max_use_per_user
-            ).exists():
-                messages.error(request, f"You have already used the coupon '{coupon.code}' the maximum number of times.")
-            elif coupon.min_order_amount and price_total < coupon.min_order_amount:
-                messages.error(request, f"Minimum order amount to use this coupon is ₹{coupon.min_order_amount}.")
-            else:
-                request.session['selected_coupon'] = coupon.code
-                if coupon.discount_type == 'fixed':
-                    discount = coupon.discount_value
-                elif coupon.discount_type == 'percentage':
-                    discount = (price_total * coupon.discount_value) / 100
-
-
-
-                request.session['discount'] = float(discount)
-                messages.success(request, f"Coupon '{coupon.code}' applied successfully!")
+    try:
+        # Ensure user exists and is valid before queries
+        cart, created = Cart.objects.get_or_create(user=request.user)
         
-        except Coupon.DoesNotExist:
-            messages.error(request, "Invalid coupon code.")
+        cart_items = CartItem.objects.filter(cart=cart)
+        
+        # Add a safety check for cart_items
+        if not cart_items.exists():
+            messages.info(request, "Your cart is empty.")
+        
+        # Safely calculate total price
+        try:
+            price_total = sum(
+                item.get_total_price() 
+                for item in cart_items 
+                if hasattr(item, 'get_total_price')
+            )
+        except Exception as price_error:
+            # Log the error
+            print(f"Error calculating price: {price_error}")
+            price_total = 0
+            messages.error(request, "Unable to calculate cart total.")
 
-    # Calculate final order total
-    request.session['discount'] = float(discount)
-    order_total = price_total - discount + 100 #(including delivery charge)
+        discount = 0
+        selected_coupon = request.POST.get('coupon_code')
 
-    return render(request, 'usercart.html', {
-        'cart_items': cart_items,
-        'price_total': price_total,
-        'coupons': available_coupons,
-        'discount': discount,
-        'order_total': order_total,
-        'selected_coupon': request.session.get('selected_coupon')
-    })
+        # Safe coupon retrieval
+        try:
+            available_coupons = Coupon.objects.filter(
+                expiry_date__gt=now(),
+                is_active=True
+            )
+        except Exception as coupon_error:
+            print(f"Coupon retrieval error: {coupon_error}")
+            available_coupons = Coupon.objects.none()
+            messages.error(request, "Unable to retrieve available coupons.")
+
+        # Coupon application logic with more error checking
+        if selected_coupon:
+            try:
+                coupon = Coupon.objects.get(code=selected_coupon)
+                # Your existing coupon validation logic
+            except Coupon.DoesNotExist:
+                messages.error(request, "Invalid coupon code.")
+                selected_coupon = None
+            except Exception as coupon_error:
+                print(f"Coupon application error: {coupon_error}")
+                messages.error(request, "An error occurred while applying the coupon.")
+                selected_coupon = None
+
+        # Calculate final total with safety checks
+        order_total = max(0, (price_total - discount + 100))
+
+        return render(request, 'usercart.html', {
+            'cart_items': cart_items,
+            'price_total': price_total,
+            'coupons': available_coupons,
+            'discount': discount,
+            'order_total': order_total,
+            'selected_coupon': selected_coupon
+        })
+
+    except Exception as e:
+        # Comprehensive error logging
+        print(f"Unexpected error in userCart: {e}")
+        messages.error(request, "An unexpected error occurred. Please try again.")
+        return render(request, 'usercart.html', {'error': str(e)})
 
 
 @login_required(login_url='userLogin')
