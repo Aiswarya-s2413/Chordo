@@ -194,8 +194,8 @@ SOCIALACCOUNT_PROVIDERS = {
         },
         'AUTH_PARAMS': {
             'access_type': 'online',  # Request online access
-        },
-    },
+        }
+    }
 }
 
 AUTH_USER_MODEL = 'adminapp.CustomUser'
