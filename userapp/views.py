@@ -606,7 +606,7 @@ def changePassword(request):
         form = ChangePasswordForm(user=request.user)
     return render(request, 'changepassword.html',{'form':form})
 
-@login_required(login_url='userLogin'
+@login_required(login_url='userLogin')
 def userCart(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_items = CartItem.objects.filter(
