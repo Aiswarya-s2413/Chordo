@@ -606,75 +606,66 @@ def changePassword(request):
         form = ChangePasswordForm(user=request.user)
     return render(request, 'changepassword.html',{'form':form})
 
-@login_required(login_url='userLogin')
+@login_required(login_url='userLogin'
 def userCart(request):
-    if not request.user.is_authenticated:
-        messages.error(request, "Please log in to view your cart.")
-        return redirect('login')
+    cart, created = Cart.objects.get_or_create(user=request.user)
+    cart_items = CartItem.objects.filter(
+        cart=cart
+    ).select_related('variant__product').prefetch_related('variant__images')
 
-    try:
-        cart, created = Cart.objects.get_or_create(user=request.user)
-        
-        cart_items = CartItem.objects.filter(cart=cart)
-        price_total = sum(item.get_total_price() for item in cart_items)
-        discount = 0
+    # Fetch valid coupons
+    coupons = Coupon.objects.filter(
+        expiry_date__gt=now()
+    ).exclude(
+        usercoupon__user=request.user,
+        usercoupon__use_count__gte=models.F('max_use_per_user')  
+    )
 
-        # Comprehensive coupon debugging
+    price_total = sum(item.get_total_price() for item in cart_items)
+    discount = 0
+    selected_coupon = request.POST.get('coupon_code')
+
+    # Handle coupon removal
+    if request.POST.get('remove_coupon'):
+        selected_coupon = None
+        messages.success(request, "Coupon removed successfully.")
+        request.session.pop('selected_coupon', None)
+
+    elif selected_coupon:
         try:
-            # Detailed coupon query with comprehensive filtering
-            available_coupons = Coupon.objects.annotate(
-                user_coupon_count=Count('usercoupon', filter=Q(
-                    usercoupon__user=request.user
-                ))
-            ).filter(
-                # Check expiry
-                expiry_date__gt=now(),
-                
-                # Optional: Additional active check if needed
-                # Uncomment if you have an is_active field
-                # is_active=True
-            ).filter(
-                # User-specific usage limit check
-                Q(max_use_per_user__isnull=True) | 
-                Q(max_use_per_user__gt=F('user_coupon_count'))
-            ).filter(
-                # Total usage limit check
-                Q(max_total_use__isnull=True) | 
-                Q(max_total_use__gt=Count('usercoupon'))
-            )
+            coupon = Coupon.objects.get(code=selected_coupon)
 
-            # Extensive debugging print statements
-            print("Debug Coupon Retrieval:")
-            print(f"Current Timestamp: {now()}")
-            print(f"Total Coupons in DB: {Coupon.objects.count()}")
-            print(f"Available Coupons Count: {available_coupons.count()}")
+            # Ensure coupon is valid
+            if coupon.expiry_date <= now():
+                messages.error(request, "Coupon has expired.")
+            elif UserCoupon.objects.filter(
+                user=request.user,
+                coupon=coupon,
+                use_count__gte=coupon.max_use_per_user  # Validate max_use_per_user
+            ).exists():
+                messages.error(request, f"You have already used the coupon '{coupon.code}' the maximum number of times.")
+            elif coupon.min_order_amount and price_total < coupon.min_order_amount:
+                messages.error(request, f"Minimum order amount to use this coupon is ₹{coupon.min_order_amount}.")
+            else:
+                # Apply discount
+                if coupon.discount_type == 'fixed':
+                    discount = coupon.discount_value
+                elif coupon.discount_type == 'percentage':
+                    discount = (price_total * coupon.discount_value) / 100
 
-            # Detailed coupon information
-            for coupon in available_coupons:
-                print("\nCoupon Details:")
-                print(f"Code: {coupon.code}")
-                print(f"Expiry Date: {coupon.expiry_date}")
-                print(f"Max Total Use: {coupon.max_total_use}")
-                print(f"Max Use Per User: {coupon.max_use_per_user}")
-                print(f"Current User Coupon Count: {coupon.user_coupon_count}")
+                # Create or get UserCoupon entry WITHOUT incrementing use count
+                user_coupon, created = UserCoupon.objects.get_or_create(
+                    user=request.user,
+                    coupon=coupon,
+                    defaults={'use_count': 0}
+                )
 
-        except Exception as coupon_error:
-            # Comprehensive error logging
-            print(f"Full Coupon Retrieval Error: {coupon_error}")
-            messages.error(request, f"Coupon Retrieval Error: {coupon_error}")
-            available_coupons = Coupon.objects.none()
-
-        return render(request, 'usercart.html', {
-            'cart_items': cart_items,
-            'price_total': price_total,
-            'coupons': available_coupons,
-            'discount': discount,
-        })
-
-    except Exception as e:
-        print(f"Unexpected error in userCart: {e}")
-        messages.error(request, f"An unexpected error occurred: {e}")
-        return render(request, 'usercart.html', {'error': str(e)})
+                # Save the selected coupon in session
+                request.session['selected_coupon'] = coupon.code
+                messages.success(request, f"Coupon '{coupon.code}' applied successfully!")
+        
+        except Coupon.DoesNotExist:
+            messages.error(request, "Invalid coupon code.")
 
 
 @login_required(login_url='userLogin')
