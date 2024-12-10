@@ -623,15 +623,16 @@ def userCart(request):
 
     price_total = sum(item.get_total_price() for item in cart_items)
     discount = 0
-    selected_coupon = request.POST.get('coupon_code')
+    selected_coupon = request.session.get('selected_coupon')  # Use session instead of POST
 
     # Handle coupon removal
-    if request.POST.get('remove_coupon'):
+    if request.method == 'POST' and request.POST.get('remove_coupon'):
         selected_coupon = None
         messages.success(request, "Coupon removed successfully.")
         request.session.pop('selected_coupon', None)
 
-    elif selected_coupon:
+    elif request.method == 'POST' and request.POST.get('coupon_code'):
+        selected_coupon = request.POST.get('coupon_code')
         try:
             coupon = Coupon.objects.get(code=selected_coupon)
 
@@ -666,6 +667,15 @@ def userCart(request):
         
         except Coupon.DoesNotExist:
             messages.error(request, "Invalid coupon code.")
+
+    # Render the template with context
+    return render(request, 'cart.html', {
+        'cart_items': cart_items,
+        'price_total': price_total,
+        'discount': discount,
+        'coupons': coupons,
+        'selected_coupon': selected_coupon
+    })
 
 
 @login_required(login_url='userLogin')
