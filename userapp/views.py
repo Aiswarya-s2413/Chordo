@@ -668,12 +668,16 @@ def userCart(request):
         except Coupon.DoesNotExist:
             messages.error(request, "Invalid coupon code.")
 
-    # Render the template with context
+    # Calculate final order total
+    request.session['discount'] = float(discount)
+    order_total = price_total - discount + 100 #(including delivery charge)
+
     return render(request, 'usercart.html', {
         'cart_items': cart_items,
         'price_total': price_total,
         'discount': discount,
         'coupons': coupons,
+        'order_total': order_total,
         'selected_coupon': selected_coupon
     })
 
