@@ -77,7 +77,9 @@
                             {% for item in order.order_items.all %}
                             <li>{{ item.get_status_display }}<a href="" class="text-warning me-2" title="Edit"
                                     data-bs-toggle="modal" data-bs-target="#edit{{ item.id }}">
+                              {% if item.status not in 'returned,cancelled' %}
                                     <i class="bi bi-pencil-square"></i>
+                              {% endif %}
                                 </a></li>
                             <!-- Edit Order Modal for each order -->
                             <div class="modal fade" id="edit{{ item.id }}" tabindex="-1"
