@@ -13,7 +13,7 @@
     <!-- common navigation bar for all user pages -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
         <div class="container-fluid">
-          <a class="navbar-brand" href="#">Chordo</a>
+          <a class="navbar-brand" href="{% url 'userHome' %}">Chordo</a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
@@ -75,7 +75,7 @@
           <div class="col-md-2 footer-section">
               <h5>Information</h5>
               <ul>
-                  <li><a href="#">Home</a></li>
+                  <li><a href="{% url 'userHome' %}">Home</a></li>
                   <li><a href="#">Delivery</a></li>
                   <li><a href="#">Shipping</a></li>
                   <li><a href="#">Cancellation</a></li>
@@ -99,12 +99,12 @@
           <div class="col-md-2 footer-section">
               <h5>Customer Care</h5>
               <ul>
-                  <li><a href="#">Shop</a></li>
-                  <li><a href="#">Cart</a></li>
-                  <li><a href="#">My Account</a></li>
-                  <li><a href="#">Wishlist</a></li>
-                  <li><a href="#">Orders</a></li>
-                  <li><a href="#">Track your Order</a></li>
+                  <li><a href="{% url 'productList' %}">Shop</a></li>
+                  <li><a href="{% url 'userCart' %}">Cart</a></li>
+                  <li><a href="{% url 'userProfile' %}">My Account</a></li>
+                  <li><a href="{% url 'wishlist' %}">Wishlist</a></li>
+                  <li><a href="{% url 'orderHistory' %}">Orders</a></li>
+                  <li><a href="{% url 'trackOrder' %}">Track your Order</a></li>
                   <li><a href="#">Customer Service</a></li>
               </ul>
           </div>
