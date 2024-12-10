@@ -669,7 +669,7 @@ def userCart(request):
             messages.error(request, "Invalid coupon code.")
 
     # Render the template with context
-    return render(request, 'cart.html', {
+    return render(request, 'usercart.html', {
         'cart_items': cart_items,
         'price_total': price_total,
         'discount': discount,
