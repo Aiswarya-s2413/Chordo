@@ -115,6 +115,20 @@
 
             </div>
             <div id="cart-message"></div>
+            {% else %}
+             <div class="action-buttons d-flex justify-content-start">
+               
+                
+                
+                <a class="btn btn-success add-to-cart-btn" href="{% url 'userLogin' %}" >
+                    Add to Cart
+                </a>
+
+               
+                <a class="btn btn-danger add-to-wishlist-btn ms-2" href="{% url 'userLogin' %}">Add to Wishlist</a>
+
+            </div>
+
             {% endif %}
         </div>
        

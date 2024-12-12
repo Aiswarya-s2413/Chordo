@@ -1158,7 +1158,7 @@ def paymentSuccess(request):
 
 @login_required(login_url='userLogin')
 def trackOrder(request):
-    orders = Order.objects.filter(user=request.user).prefetch_related('order_items__variant')
+    orders = Order.objects.filter(user=request.user).prefetch_related('order_items__variant').order_by(-id)
 
     orders_with_filtered_items = []
 
