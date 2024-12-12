@@ -215,7 +215,7 @@ def editVariant(request, variant_id):
                 print("Variant form errors:", variant_form.errors)
                 print("Image formset errors:", image_formset.errors)
 
-        return render(request, 'editVariant.html', {
+        return render(request, 'editvariant.html', {
             'variant_form': variant_form,
             'image_formset': image_formset,
             'product': product,
