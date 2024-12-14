@@ -111,35 +111,16 @@ def addVariants(request, product_id):
             if variant_formset.is_valid() and image_formset.is_valid():
                 variants = variant_formset.save(commit=False)
 
-                for variant in variants:
+                for variant_index, variant in enumerate(variants):
                     variant.product = product  
                     variant.save()
 
-                    # Process images with cropping support
+                    # Find corresponding images for this variant
                     for image_form in image_formset:
-                        # Check if the form has an image or cropped data
-                        if image_form.cleaned_data.get('image') or request.POST.get(f'cropped_image_{image_form.prefix}'):
-                            cropped_image_data = request.POST.get(f'cropped_image_{image_form.prefix}')
-                            if cropped_image_data:
-                                # Decode Base64 and save cropped image
-                                format, imgstr = cropped_image_data.split(';base64,')  # Extract format and data
-                                ext = format.split('/')[-1]  # Get file extension
-                                img_data = ContentFile(base64.b64decode(imgstr), name=f"cropped_{image_form.prefix}.{ext}")
-
-                                # Save the cropped image
-                                image_form.instance.image.save(f"cropped_{image_form.prefix}.{ext}", img_data)
-                            else:
-                                # Save the uploaded image as is
-                                image_form.save()
-
-                            # Associate the image with the variant
-                            image_form.instance.variant = variant
-                            image_form.save()
-                            print(f"Saved image: {image_form.instance.image.url}")  # This is now safe to call
-                        else:
-                            # Skip saving forms with no valid image or cropped data
-                            print(f"Skipping image form for {image_form.prefix} with no data.")
-                            continue
+                        if image_form.cleaned_data.get('image'):
+                            image_instance = image_form.save(commit=False)
+                            image_instance.variant = variant
+                            image_instance.save()
 
                 return redirect('adminProduct')
 
