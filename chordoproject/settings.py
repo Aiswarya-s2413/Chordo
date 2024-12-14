@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-a$x3%vp!^u5koua=yytuqy6rzma&k4jn%qbn@#bko*u=f_f5@0
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['chordo.site', '13.210.159.129']
+ALLOWED_HOSTS = ['chordo.site', '13.236.52.47']
 
 
 # Application definition

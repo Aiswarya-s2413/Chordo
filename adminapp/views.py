@@ -115,10 +115,31 @@ def addVariants(request, product_id):
                     variant.product = product  
                     variant.save()
 
-                    images = image_formset.save(commit=False)
-                    for image in images:
-                        image.variant = variant
-                        image.save()
+                    # Process images with cropping support
+                    for image_form in image_formset:
+                        # Check if the form has an image or cropped data
+                        if image_form.cleaned_data.get('image') or request.POST.get(f'cropped_image_{image_form.prefix}'):
+                            cropped_image_data = request.POST.get(f'cropped_image_{image_form.prefix}')
+                            if cropped_image_data:
+                                # Decode Base64 and save cropped image
+                                format, imgstr = cropped_image_data.split(';base64,')  # Extract format and data
+                                ext = format.split('/')[-1]  # Get file extension
+                                img_data = ContentFile(base64.b64decode(imgstr), name=f"cropped_{image_form.prefix}.{ext}")
+
+                                # Save the cropped image
+                                image_form.instance.image.save(f"cropped_{image_form.prefix}.{ext}", img_data)
+                            else:
+                                # Save the uploaded image as is
+                                image_form.save()
+
+                            # Associate the image with the variant
+                            image_form.instance.variant = variant
+                            image_form.save()
+                            print(f"Saved image: {image_form.instance.image.url}")  # This is now safe to call
+                        else:
+                            # Skip saving forms with no valid image or cropped data
+                            print(f"Skipping image form for {image_form.prefix} with no data.")
+                            continue
 
                 return redirect('adminProduct')
 
@@ -133,6 +154,7 @@ def addVariants(request, product_id):
         })
 
     return redirect('adminLogin')
+
 
 
 

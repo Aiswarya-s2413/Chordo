@@ -3,7 +3,7 @@
 {% block content %}
 <div class="col-md-8">
     <h2 class="text-center mb-4">Add Variants for {{ product.name }}</h2>
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" id="variantForm">
         {% csrf_token %}
         {{ variant_formset.management_form }}
 
@@ -34,15 +34,26 @@
                 </div>
 
                 <h5>Images for Variant {{ forloop.counter }}</h5>
+                
                 {{ image_formset.management_form }}
 
                 {% for image_form in image_formset %}
                     <div class="col-md-6 mb-3">
                         {{ image_form.image.label_tag }}
-                        {{ image_form.image }}
+                        <input type="file" class="form-control crop-input" id="imageInput{{ forloop.counter }}" 
+                            data-image-target="#imagePreview{{ forloop.counter }}" 
+                            data-modal-target="#cropModal{{ forloop.counter }}">
                         {% if image_form.image.errors %}
                             <div class="text-danger">{{ image_form.image.errors.0 }}</div>
                         {% endif %}
+                        
+                        <!-- Hidden input to store cropped image data -->
+                        <input type="hidden" name="cropped_image_{{ forloop.counter }}" id="cropped_image_{{ forloop.counter }}">
+
+                        <!-- Preview container -->
+                        <div class="mt-2">
+                            <img id="imagePreview{{ forloop.counter }}" class="img-fluid preview-img" alt="Preview">
+                        </div>
                     </div>
                 {% endfor %}
             {% endfor %}
@@ -54,6 +65,91 @@
     </form>
 </div>
 
+<!-- Modal for cropping -->
+<div class="modal fade" id="cropModal" tabindex="-1" aria-labelledby="cropModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crop Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="crop-container">
+                    <img id="cropImage" class="img-fluid">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cropBtn" class="btn btn-primary">Crop and Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let cropper;
+        const cropModal = document.getElementById("cropModal");
+        const cropImage = document.getElementById("cropImage");
+        const cropBtn = document.getElementById("cropBtn");
+        let targetInput, targetPreview;
 
+        document.querySelectorAll(".crop-input").forEach(input => {
+            input.addEventListener("change", function (event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        cropImage.src = e.target.result;
+                        targetInput = event.target;
+                        targetPreview = document.querySelector(event.target.dataset.imageTarget);
+                        const modal = new bootstrap.Modal(cropModal);
+                        modal.show();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+        cropModal.addEventListener("shown.bs.modal", function () {
+            cropper = new Cropper(cropImage, {
+                aspectRatio: 1,
+                viewMode: 2,
+                autoCropArea: 1,
+                movable: true,
+                scalable: true,
+                zoomable: true,
+                rotatable: true,
+            });
+        });
+
+        cropModal.addEventListener("hidden.bs.modal", function () {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
+
+        cropBtn.addEventListener("click", function () {
+            const canvas = cropper.getCroppedCanvas({
+                width: 500,
+                height: 500,
+            });
+
+            canvas.toBlob(function (blob) {
+                const croppedFile = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(croppedFile);
+                targetInput.files = dataTransfer.files;
+
+                targetPreview.src = URL.createObjectURL(croppedFile);
+
+                const modal = bootstrap.Modal.getInstance(cropModal);
+                modal.hide();
+            }, "image/jpeg");
+        });
+    });
+</script>
 {% endblock %}
+
