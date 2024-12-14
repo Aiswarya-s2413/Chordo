@@ -106,6 +106,7 @@ def addVariants(request, product_id):
     if request.user.is_superuser:
         if request.method == 'POST':
             variant_formset = ProductVariantFormSet(request.POST, instance=product)
+            # Important: Pass request.FILES here
             image_formset = ProductImageFormSet(request.POST, request.FILES)
 
             if variant_formset.is_valid() and image_formset.is_valid():
@@ -115,8 +116,9 @@ def addVariants(request, product_id):
                     variant.product = product  
                     variant.save()
 
-                    # Find corresponding images for this variant
+                    # Process images for this specific variant
                     for image_form in image_formset:
+                        # Check if this image form corresponds to the current variant
                         if image_form.cleaned_data.get('image'):
                             image_instance = image_form.save(commit=False)
                             image_instance.variant = variant

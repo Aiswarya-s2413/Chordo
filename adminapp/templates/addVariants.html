@@ -131,24 +131,40 @@
         });
 
         cropBtn.addEventListener("click", function () {
-            const canvas = cropper.getCroppedCanvas({
-                width: 500,
-                height: 500,
-            });
+    const canvas = cropper.getCroppedCanvas({
+        width: 500,
+        height: 500,
+    });
 
-            canvas.toBlob(function (blob) {
-                const croppedFile = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+    canvas.toBlob(function (blob) {
+        const croppedFile = new File([blob], "cropped.jpg", { type: "image/jpeg" });
 
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(croppedFile);
-                targetInput.files = dataTransfer.files;
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(croppedFile);
+        targetInput.files = dataTransfer.files;
 
-                targetPreview.src = URL.createObjectURL(croppedFile);
+        // Create a base64 representation for server-side processing
+        const reader = new FileReader();
+        reader.onloadend = function() {
+            // Find or create a hidden input to store base64 data
+            let hiddenInput = targetInput.closest('.image-upload-container').querySelector('.cropped-image-data');
+            if (!hiddenInput) {
+                hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.className = 'cropped-image-data';
+                hiddenInput.name = targetInput.name.replace('image', 'cropped_image');
+                targetInput.closest('.image-upload-container').appendChild(hiddenInput);
+            }
+            hiddenInput.value = reader.result;
+        }
+        reader.readAsDataURL(croppedFile);
 
-                const modal = bootstrap.Modal.getInstance(cropModal);
-                modal.hide();
-            }, "image/jpeg");
-        });
+        targetPreview.src = URL.createObjectURL(croppedFile);
+
+        const modal = bootstrap.Modal.getInstance(cropModal);
+        modal.hide();
+    }, "image/jpeg");
+});
     });
 </script>
 {% endblock %}
