@@ -222,8 +222,8 @@ def userLogout(request):
     return redirect('userLogin')
 
 def userHome(request):
-    latest_products=ProductVariant.objects.filter(is_deleted=False,product__category__is_deleted=False).order_by('-id')[:4]
-    best_products=ProductVariant.objects.filter(is_deleted=False,product__category__is_deleted=False).order_by('quantity')[:4]
+    latest_products=ProductVariant.objects.filter(is_deleted=False,product__category__is_deleted=False).prefetch_related('images').order_by('-id')[:4]
+    best_products=ProductVariant.objects.filter(is_deleted=False,product__category__is_deleted=False).prefetch_related('images').order_by('quantity')[:4]
 
     for product in latest_products:    #for handling rating
         avg_rating = product.average_rating or 0
