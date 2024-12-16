@@ -113,16 +113,39 @@ def addVariants(request, product_id):
                 variants = variant_formset.save(commit=False)
 
                 for variant_index, variant in enumerate(variants):
-                    variant.product = product  
+                    variant.product = product   
                     variant.save()
 
                     # Process images for this specific variant
                     for image_form in image_formset:
-                        # Check if this image form corresponds to the current variant
-                        if image_form.cleaned_data.get('image'):
+                        # Check if this image form has a file
+                        image_file = image_form.cleaned_data.get('image')
+                        cropped_image_data = request.POST.get(f'cropped_image_{variant_index+1}')
+
+                        if image_file or cropped_image_data:
                             image_instance = image_form.save(commit=False)
                             image_instance.variant = variant
-                            image_instance.save()
+                            
+                            # If cropped image data exists, convert and use it
+                            if cropped_image_data:
+                                from django.core.files.base import ContentFile
+                                import base64
+                                
+                                # Remove data URL prefix if present
+                                if cropped_image_data.startswith('data:image'):
+                                    header, cropped_image_data = cropped_image_data.split(',', 1)
+                                
+                                # Decode base64
+                                decoded_image = base64.b64decode(cropped_image_data)
+                                image_instance.image.save(
+                                    f'cropped_{variant.id}_{image_form.prefix}.jpg', 
+                                    ContentFile(decoded_image), 
+                                    save=True
+                                )
+                            else:
+                                # Use original uploaded image
+                                image_instance.image = image_file
+                                image_instance.save()
 
                 return redirect('adminProduct')
 
@@ -137,6 +160,7 @@ def addVariants(request, product_id):
         })
 
     return redirect('adminLogin')
+
 
 
 

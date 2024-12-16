@@ -38,21 +38,36 @@
                 {{ image_formset.management_form }}
 
                 {% for image_form in image_formset %}
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-3 image-upload-container">
                         {{ image_form.image.label_tag }}
-                        <input type="file" class="form-control crop-input" id="imageInput{{ forloop.counter }}" 
-                            data-image-target="#imagePreview{{ forloop.counter }}" 
-                            data-modal-target="#cropModal{{ forloop.counter }}">
+                        <input type="file" 
+                               class="form-control crop-input" 
+                               id="imageInput{{ forloop.counter }}" 
+                               data-counter="{{ forloop.counter }}"
+                               data-image-target="#imagePreview{{ forloop.counter }}" 
+                               data-modal-target="#cropModal{{ forloop.counter }}"
+                               accept=".jpg,.jpeg,.png"
+                               >
+                        
+                        <!-- Error message container for file type -->
+                        <div id="fileTypeError{{ forloop.counter }}" class="text-danger mt-2" style="display:none;">
+                            Only JPG and PNG files are allowed.
+                        </div>
+
                         {% if image_form.image.errors %}
                             <div class="text-danger">{{ image_form.image.errors.0 }}</div>
                         {% endif %}
                         
                         <!-- Hidden input to store cropped image data -->
-                        <input type="hidden" name="cropped_image_{{ forloop.counter }}" id="cropped_image_{{ forloop.counter }}">
+                        <input type="hidden" name="cropped_image_{{ forloop.counter }}" 
+                               id="cropped_image_{{ forloop.counter }}">
 
                         <!-- Preview container -->
                         <div class="mt-2">
-                            <img id="imagePreview{{ forloop.counter }}" class="img-fluid preview-img" alt="Preview">
+                            <img id="imagePreview{{ forloop.counter }}" 
+                                 class="img-fluid preview-img" 
+                                 alt="Preview" 
+                                 style="max-height: 200px; object-fit: contain;">
                         </div>
                     </div>
                 {% endfor %}
@@ -64,7 +79,6 @@
         </div>
     </form>
 </div>
-
 <!-- Modal for cropping -->
 <div class="modal fade" id="cropModal" tabindex="-1" aria-labelledby="cropModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -87,22 +101,46 @@
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+   document.addEventListener("DOMContentLoaded", function () {
         let cropper;
         const cropModal = document.getElementById("cropModal");
         const cropImage = document.getElementById("cropImage");
         const cropBtn = document.getElementById("cropBtn");
-        let targetInput, targetPreview;
+        let targetInput, targetPreview, currentCounter;
 
+        // File type validation function
+        function validateFileType(file) {
+            const allowedTypes = ['image/jpeg', 'image/png'];
+            return allowedTypes.includes(file.type);
+        }
+
+        // Event delegation for file inputs
         document.querySelectorAll(".crop-input").forEach(input => {
             input.addEventListener("change", function (event) {
+                // Reset any previous error messages
+                const errorMessageEl = document.getElementById(`fileTypeError${this.dataset.counter}`);
+                errorMessageEl.style.display = 'none';
+
                 const file = event.target.files[0];
                 if (file) {
+                    // Validate file type
+                    if (!validateFileType(file)) {
+                        // Show error message
+                        errorMessageEl.style.display = 'block';
+                        // Clear the file input
+                        event.target.value = '';
+                        return;
+                    }
+
                     const reader = new FileReader();
                     reader.onload = function (e) {
+                        console.log("Selected File:", file);
+                        
                         cropImage.src = e.target.result;
                         targetInput = event.target;
                         targetPreview = document.querySelector(event.target.dataset.imageTarget);
+                        currentCounter = event.target.dataset.counter;
+                        
                         const modal = new bootstrap.Modal(cropModal);
                         modal.show();
                     };
@@ -131,41 +169,60 @@
         });
 
         cropBtn.addEventListener("click", function () {
-    const canvas = cropper.getCroppedCanvas({
-        width: 500,
-        height: 500,
-    });
+            console.log("Crop Button Clicked");
+            console.log("Target Input:", targetInput);
+            console.log("Target Preview:", targetPreview);
+            console.log("Current Counter:", currentCounter);
 
-    canvas.toBlob(function (blob) {
-        const croppedFile = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+            const canvas = cropper.getCroppedCanvas({
+                width: 500,
+                height: 500,
+            });
 
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(croppedFile);
-        targetInput.files = dataTransfer.files;
+            canvas.toBlob(function (blob) {
+                console.log("Blob Created:", blob);
+                const croppedFile = new File([blob], `cropped_${Date.now()}.jpg`, { type: "image/jpeg" });
+                console.log("Cropped File:", croppedFile);
 
-        // Create a base64 representation for server-side processing
-        const reader = new FileReader();
-        reader.onloadend = function() {
-            // Find or create a hidden input to store base64 data
-            let hiddenInput = targetInput.closest('.image-upload-container').querySelector('.cropped-image-data');
-            if (!hiddenInput) {
-                hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.className = 'cropped-image-data';
-                hiddenInput.name = targetInput.name.replace('image', 'cropped_image');
-                targetInput.closest('.image-upload-container').appendChild(hiddenInput);
-            }
-            hiddenInput.value = reader.result;
-        }
-        reader.readAsDataURL(croppedFile);
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(croppedFile);
+                targetInput.files = dataTransfer.files;
 
-        targetPreview.src = URL.createObjectURL(croppedFile);
+                // Create a base64 representation for server-side processing
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    console.log("Base64 Data Generated");
 
-        const modal = bootstrap.Modal.getInstance(cropModal);
-        modal.hide();
-    }, "image/jpeg");
-});
+                    // Find the hidden input by current counter
+                    let hiddenInput = document.getElementById(`cropped_image_${currentCounter}`);
+                    
+                    if (!hiddenInput) {
+                        console.warn("Hidden input not found, creating new one");
+                        hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.id = `cropped_image_${currentCounter}`;
+                        hiddenInput.name = `cropped_image_${currentCounter}`;
+                        targetInput.closest('form').appendChild(hiddenInput);
+                    }
+                    
+                    hiddenInput.value = reader.result;
+                    console.log("Hidden Input Value Set");
+
+                    // Update preview
+                    targetPreview.src = URL.createObjectURL(croppedFile);
+
+                    // Hide modal
+                    const modal = bootstrap.Modal.getInstance(cropModal);
+                    modal.hide();
+                };
+                
+                reader.onerror = function(error) {
+                    console.error("FileReader Error:", error);
+                };
+
+                reader.readAsDataURL(croppedFile);
+            }, "image/jpeg");
+        });
     });
 </script>
 {% endblock %}
-

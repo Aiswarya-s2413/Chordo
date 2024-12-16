@@ -62,11 +62,25 @@ class ProductImageForm(forms.ModelForm):
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'alt_text': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter alt text'}),
         }
-    def __init__(self, *args, product_name=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if product_name:
-            self.fields['alt_text'].initial = product_name
-        self.fields['image'].required = False 
+        
+    
+        self.fields['image'].required = False
+        self.fields['alt_text'].required = False
+
+    def clean_image(self):
+        image = self.cleaned_data.get('image')
+        if image:
+            # Check file extension
+            ext = os.path.splitext(image.name)[1].lower()
+            allowed_extensions = ['.jpg', '.jpeg', '.png']
+            
+            if ext not in allowed_extensions:
+                raise forms.ValidationError("Only JPG and PNG files are allowed.")
+            
+        
+        return image 
 
 ProductVariantFormSet = inlineformset_factory(
     Product,
