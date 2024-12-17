@@ -221,12 +221,8 @@ def editVariant(request, variant_id):
     product = variant.product
     variant_form = ProductVariantForm(request.POST or None, instance=variant)
 
-    # Get existing images and sort them by filename to maintain order
+    # Get existing images, maintaining order
     existing_images = Image.objects.filter(variant=variant, is_deleted=False)
-    # Convert queryset to list and sort by the numeric part of the filename
-    existing_images = sorted(existing_images, 
-                           key=lambda x: int(x.image.name.split('_')[-1].split('.')[0]) 
-                           if x.image and '_' in x.image.name else 0)
     
     image_formset = ProductImageFormSet(
         request.POST or None,
@@ -250,14 +246,10 @@ def editVariant(request, variant_id):
                     if original_image_id:
                         try:
                             existing_image = Image.objects.get(id=original_image_id)
-                            # Get the position from the original filename
-                            original_position = int(existing_image.image.name.split('_')[-1].split('.')[0])
-                        except (Image.DoesNotExist, ValueError, IndexError):
+                        except Image.DoesNotExist:
                             existing_image = None
-                            original_position = index
                     else:
                         existing_image = None
-                        original_position = index
 
                     if cropped_image_data:  # New image uploaded
                         try:
@@ -275,10 +267,10 @@ def editVariant(request, variant_id):
                                 # Create new image instance
                                 image_instance = Image(variant=variant)
 
-                            # Save new image with original position in filename
+                            # Save new image
                             decoded_image = base64.b64decode(cropped_image_data)
                             image_instance.image.save(
-                                f'variant_{variant.id}_image_{original_position}.jpg',
+                                f'variant_{variant.id}_image_{index}.jpg',
                                 ContentFile(decoded_image),
                                 save=False
                             )
@@ -306,6 +298,7 @@ def editVariant(request, variant_id):
             'variant': variant,
         })
     return redirect('adminLogin')
+
 
 
 @login_required(login_url='adminLogin')
