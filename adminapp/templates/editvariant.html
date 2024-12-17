@@ -4,20 +4,10 @@
 
 <div class="col-md-8">
     <h2 class="text-center mb-4">Edit Variant for {{ product.name }}</h2>
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" id="editVariantForm">
         {% csrf_token %}
-         
 
-        <!-- display errors from clean methods -->
-        {% if variant_form.non_field_errors %}
-            <div class="alert alert-danger">
-                {% for error in variant_form.non_field_errors %}
-                    <p>{{ error }}</p>
-                {% endfor %}
-            </div>
-        {% endif %}
-
-        <!-- Variant Form Fields -->
+        <!-- Display Variant Form -->
         <div class="row">
             <div class="col-md-4 mb-3">
                 {{ variant_form.color.label_tag }}
@@ -26,7 +16,6 @@
                     <div class="text-danger">{{ variant_form.color.errors.0 }}</div>
                 {% endif %}
             </div>
-            
             <div class="col-md-4 mb-3">
                 {{ variant_form.price.label_tag }}
                 {{ variant_form.price }}
@@ -34,7 +23,6 @@
                     <div class="text-danger">{{ variant_form.price.errors.0 }}</div>
                 {% endif %}
             </div>
-            
             <div class="col-md-4 mb-3">
                 {{ variant_form.quantity.label_tag }}
                 {{ variant_form.quantity }}
@@ -44,33 +32,55 @@
             </div>
         </div>
 
+        <!-- Images Section -->
         <h5 class="mt-4">Edit Images for Variant</h5>
         {{ image_formset.management_form }}
-
-        <!-- Image Formset Fields -->
         <div class="row">
             {% for image_form in image_formset %}
-                <div class="col-md-6 mb-3">
-                    {{ image_form.image.label_tag }}
+                <div class="col-md-3 mb-3 image-upload-container">
+                    <label>Image {{ forloop.counter }}</label>
+                    <!-- Hidden original form field -->
+                    {{ image_form.id }}
+                    {{ image_form.image.as_hidden }}
                     
-                    <!-- Display the current image if it exists -->
-                    {% if image_form.instance.image and image_form.instance.image.url %}
-                        <div class="mb-2">
-                            <img src="{{ image_form.instance.image.url }}" alt="{{ image_form.alt_text.value }}" class="img-thumbnail" style="max-width: 150px;">
-                        </div>
-                    {% endif %}
+                    <!-- Add a hidden input to store the original image ID -->
+                    <input type="hidden" name="original_image_id_{{ forloop.counter }}" 
+                           value="{{ image_form.instance.id|default:'' }}">
                     
-                    {{ image_form.image }}
-                    {% if image_form.image.errors %}
-                        <div class="text-danger">{{ image_form.image.errors.0 }}</div>
-                    {% endif %}
-                </div>
+                    <!-- Custom file input for cropping -->
+                    <input type="file" 
+                           class="form-control crop-input" 
+                           id="imageInput{{ forloop.counter }}" 
+                           data-counter="{{ forloop.counter }}"
+                           data-original-id="{{ image_form.instance.id|default:'' }}"
+                           data-image-target="#imagePreview{{ forloop.counter }}" 
+                           accept=".jpg,.jpeg,.png">
+                    
+                    <!-- Error message container -->
+                    <div id="fileTypeError{{ forloop.counter }}" class="text-danger mt-2" style="display:none;">
+                        Only JPG and PNG files are allowed.
+                    </div>
 
-                <!-- Delete Checkbox -->
-                {% comment %} <div class="col-md-12 mb-3">
-                    {{ image_form.DELETE.label_tag }}
-                    {{ image_form.DELETE }}
-                </div> {% endcomment %}
+                    <!-- Hidden input for cropped image -->
+                    <input type="hidden" name="cropped_image_{{ forloop.counter }}" 
+                           id="cropped_image_{{ forloop.counter }}">
+
+                    <!-- Preview container -->
+                    <div class="mt-2">
+                        {% if image_form.instance.image %}
+                            <img src="{{ image_form.instance.image.url }}" 
+                                 id="imagePreview{{ forloop.counter }}" 
+                                 class="img-fluid preview-img" 
+                                 alt="Preview"
+                                 style="max-height: 200px; object-fit: contain;">
+                        {% else %}
+                            <img id="imagePreview{{ forloop.counter }}" 
+                                 class="img-fluid preview-img" 
+                                 alt="Preview"
+                                 style="max-height: 200px; object-fit: contain; display: none;">
+                        {% endif %}
+                    </div>
+                </div>
             {% endfor %}
         </div>
 
@@ -81,7 +91,139 @@
     </form>
 </div>
 
+<!-- Cropper Modal -->
+<div class="modal fade" id="cropModal" tabindex="-1" aria-labelledby="cropModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crop Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="crop-container">
+                    <img id="cropImage" class="img-fluid">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cropBtn" class="btn btn-primary">Crop and Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-  
+<!-- Cropper Script -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    let cropper;
+    const cropModal = document.getElementById("cropModal");
+    const cropImage = document.getElementById("cropImage");
+    const cropBtn = document.getElementById("cropBtn");
+    let targetInput, targetPreview, currentCounter;
+    let currentImageData;
 
+    // File type validation function
+    function validateFileType(file) {
+        const allowedTypes = ['image/jpeg', 'image/png'];
+        return allowedTypes.includes(file.type);
+    }
+
+    // Event delegation for file inputs
+    document.querySelectorAll(".crop-input").forEach(input => {
+        input.addEventListener("change", function (event) {
+            // Reset any previous error messages
+            const errorMessageEl = document.getElementById(`fileTypeError${this.dataset.counter}`);
+            errorMessageEl.style.display = 'none';
+
+            const file = event.target.files[0];
+            if (file) {
+                // Validate file type
+                if (!validateFileType(file)) {
+                    errorMessageEl.style.display = 'block';
+                    event.target.value = '';
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    currentImageData = e.target.result;
+                    cropImage.src = currentImageData;
+                    targetInput = event.target;
+                    targetPreview = document.querySelector(event.target.dataset.imageTarget);
+                    currentCounter = event.target.dataset.counter;
+                    
+                    const modal = new bootstrap.Modal(cropModal);
+                    modal.show();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+
+    cropModal.addEventListener("shown.bs.modal", function () {
+        if (cropper) {
+            cropper.destroy();
+        }
+        cropper = new Cropper(cropImage, {
+            aspectRatio: 1,
+            viewMode: 2,
+            autoCropArea: 1,
+            movable: true,
+            scalable: true,
+            zoomable: true,
+            rotatable: true,
+        });
+    });
+
+    cropModal.addEventListener("hidden.bs.modal", function () {
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+    });
+
+    cropBtn.addEventListener("click", function () {
+        const canvas = cropper.getCroppedCanvas({
+            width: 500,
+            height: 500,
+        });
+
+        canvas.toBlob(function (blob) {
+            const croppedFile = new File([blob], `cropped_${currentCounter}_${Date.now()}.jpg`, { type: "image/jpeg" });
+
+            // Update the file input
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(croppedFile);
+            targetInput.files = dataTransfer.files;
+
+            // Show the preview container if it was hidden
+            targetPreview.style.display = 'block';
+
+            // Create a base64 representation for server-side processing
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                // Find the hidden input for this specific image
+                const hiddenInput = document.getElementById(`cropped_image_${currentCounter}`);
+                if (hiddenInput) {
+                    hiddenInput.value = reader.result;
+                }
+
+                // Update preview for this specific image
+                targetPreview.src = URL.createObjectURL(croppedFile);
+
+                // Hide modal
+                const modal = bootstrap.Modal.getInstance(cropModal);
+                modal.hide();
+            };
+            
+            reader.onerror = function(error) {
+                console.error("FileReader Error:", error);
+            };
+
+            reader.readAsDataURL(croppedFile);
+        }, "image/jpeg");
+    });
+});
+</script>
 {% endblock %}
+

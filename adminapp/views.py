@@ -218,30 +218,86 @@ def editProduct(request, product_id):
 @login_required(login_url='adminLogin')
 def editVariant(request, variant_id):
     variant = get_object_or_404(ProductVariant, id=variant_id, is_deleted=False)
-    product = variant.product 
+    product = variant.product
     variant_form = ProductVariantForm(request.POST or None, instance=variant)
 
+    # Get existing images and sort them by filename to maintain order
+    existing_images = Image.objects.filter(variant=variant, is_deleted=False)
+    # Convert queryset to list and sort by the numeric part of the filename
+    existing_images = sorted(existing_images, 
+                           key=lambda x: int(x.image.name.split('_')[-1].split('.')[0]) 
+                           if x.image and '_' in x.image.name else 0)
+    
     image_formset = ProductImageFormSet(
         request.POST or None,
         request.FILES or None,
         instance=variant,
-        queryset=Image.objects.filter(is_deleted=False)
+        queryset=existing_images
     )
 
-    for form in image_formset:
-        form.fields['id'].required = False
-        form.fields['image'].required = False  
     if request.user.is_superuser:
         if request.method == 'POST':
             if variant_form.is_valid() and image_formset.is_valid():
-                variant_form.save()
-                image_formset.save()
+                variant = variant_form.save()
+
+                # Process existing images and new uploads
+                existing_image_ids = []
+                for index in range(1, 5):  # Handle all 4 possible image slots
+                    cropped_image_data = request.POST.get(f'cropped_image_{index}')
+                    original_image_id = request.POST.get(f'original_image_id_{index}')
+                    
+                    # If there's an original image ID, try to get that specific image
+                    if original_image_id:
+                        try:
+                            existing_image = Image.objects.get(id=original_image_id)
+                            # Get the position from the original filename
+                            original_position = int(existing_image.image.name.split('_')[-1].split('.')[0])
+                        except (Image.DoesNotExist, ValueError, IndexError):
+                            existing_image = None
+                            original_position = index
+                    else:
+                        existing_image = None
+                        original_position = index
+
+                    if cropped_image_data:  # New image uploaded
+                        try:
+                            # Remove data URL prefix if present
+                            if cropped_image_data.startswith('data:image'):
+                                header, cropped_image_data = cropped_image_data.split(',', 1)
+
+                            # If there's an existing image, update it
+                            if existing_image:
+                                # Delete old file if it exists
+                                if existing_image.image:
+                                    existing_image.image.delete(save=False)
+                                image_instance = existing_image
+                            else:
+                                # Create new image instance
+                                image_instance = Image(variant=variant)
+
+                            # Save new image with original position in filename
+                            decoded_image = base64.b64decode(cropped_image_data)
+                            image_instance.image.save(
+                                f'variant_{variant.id}_image_{original_position}.jpg',
+                                ContentFile(decoded_image),
+                                save=False
+                            )
+                            image_instance.save()
+                            existing_image_ids.append(image_instance.id)
+
+                        except Exception as e:
+                            messages.error(request, f'Error processing image {index}: {str(e)}')
+                            continue
+                    elif existing_image:  # No new image, but existing image present
+                        existing_image_ids.append(existing_image.id)
+
+                # Soft delete images that are no longer needed
+                Image.objects.filter(variant=variant).exclude(id__in=existing_image_ids).update(is_deleted=True)
 
                 messages.success(request, 'Variant successfully edited')
-                return redirect('adminProduct')  
+                return redirect('adminProduct')
             else:
-                print("Variant form errors:", variant_form.errors)
-                print("Image formset errors:", image_formset.errors)
+                messages.error(request, 'Please correct the errors below.')
 
         return render(request, 'editvariant.html', {
             'variant_form': variant_form,
@@ -250,6 +306,7 @@ def editVariant(request, variant_id):
             'variant': variant,
         })
     return redirect('adminLogin')
+
 
 @login_required(login_url='adminLogin')
 def adminCustomer(request):
