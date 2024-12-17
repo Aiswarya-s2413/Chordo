@@ -18,7 +18,10 @@ from xhtml2pdf import pisa
 from django.utils.timezone import now, timedelta, localtime
 from django.http import JsonResponse
 from django.db.models import Sum
-
+import base64
+from io import BytesIO
+from django.core.files.base import ContentFile
+from PIL import Image as PILImage
 
 
 
