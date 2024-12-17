@@ -107,6 +107,7 @@
         const cropImage = document.getElementById("cropImage");
         const cropBtn = document.getElementById("cropBtn");
         let targetInput, targetPreview, currentCounter;
+        let currentImageData;
 
         // File type validation function
         function validateFileType(file) {
@@ -125,18 +126,15 @@
                 if (file) {
                     // Validate file type
                     if (!validateFileType(file)) {
-                        // Show error message
                         errorMessageEl.style.display = 'block';
-                        // Clear the file input
                         event.target.value = '';
                         return;
                     }
 
                     const reader = new FileReader();
                     reader.onload = function (e) {
-                        console.log("Selected File:", file);
-                        
-                        cropImage.src = e.target.result;
+                        currentImageData = e.target.result;
+                        cropImage.src = currentImageData;
                         targetInput = event.target;
                         targetPreview = document.querySelector(event.target.dataset.imageTarget);
                         currentCounter = event.target.dataset.counter;
@@ -150,6 +148,9 @@
         });
 
         cropModal.addEventListener("shown.bs.modal", function () {
+            if (cropper) {
+                cropper.destroy();
+            }
             cropper = new Cropper(cropImage, {
                 aspectRatio: 1,
                 viewMode: 2,
@@ -169,21 +170,15 @@
         });
 
         cropBtn.addEventListener("click", function () {
-            console.log("Crop Button Clicked");
-            console.log("Target Input:", targetInput);
-            console.log("Target Preview:", targetPreview);
-            console.log("Current Counter:", currentCounter);
-
             const canvas = cropper.getCroppedCanvas({
                 width: 500,
                 height: 500,
             });
 
             canvas.toBlob(function (blob) {
-                console.log("Blob Created:", blob);
-                const croppedFile = new File([blob], `cropped_${Date.now()}.jpg`, { type: "image/jpeg" });
-                console.log("Cropped File:", croppedFile);
+                const croppedFile = new File([blob], `cropped_${currentCounter}_${Date.now()}.jpg`, { type: "image/jpeg" });
 
+                // Update the file input
                 const dataTransfer = new DataTransfer();
                 dataTransfer.items.add(croppedFile);
                 targetInput.files = dataTransfer.files;
@@ -191,24 +186,13 @@
                 // Create a base64 representation for server-side processing
                 const reader = new FileReader();
                 reader.onloadend = function() {
-                    console.log("Base64 Data Generated");
-
-                    // Find the hidden input by current counter
-                    let hiddenInput = document.getElementById(`cropped_image_${currentCounter}`);
-                    
-                    if (!hiddenInput) {
-                        console.warn("Hidden input not found, creating new one");
-                        hiddenInput = document.createElement('input');
-                        hiddenInput.type = 'hidden';
-                        hiddenInput.id = `cropped_image_${currentCounter}`;
-                        hiddenInput.name = `cropped_image_${currentCounter}`;
-                        targetInput.closest('form').appendChild(hiddenInput);
+                    // Find the hidden input for this specific image
+                    const hiddenInput = document.getElementById(`cropped_image_${currentCounter}`);
+                    if (hiddenInput) {
+                        hiddenInput.value = reader.result;
                     }
-                    
-                    hiddenInput.value = reader.result;
-                    console.log("Hidden Input Value Set");
 
-                    // Update preview
+                    // Update preview for this specific image
                     targetPreview.src = URL.createObjectURL(croppedFile);
 
                     // Hide modal

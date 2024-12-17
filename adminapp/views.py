@@ -106,58 +106,54 @@ def addVariants(request, product_id):
     if request.user.is_superuser:
         if request.method == 'POST':
             variant_formset = ProductVariantFormSet(request.POST, instance=product)
-            # Important: Pass request.FILES here
             image_formset = ProductImageFormSet(request.POST, request.FILES)
 
             if variant_formset.is_valid() and image_formset.is_valid():
                 variants = variant_formset.save(commit=False)
 
-                for variant_index, variant in enumerate(variants):
+                for variant in variants:
                     variant.product = product   
                     variant.save()
 
-                    # Process images for this specific variant
-                    for image_form in image_formset:
-                        # Check if this image form has a file
-                        image_file = image_form.cleaned_data.get('image')
-                        cropped_image_data = request.POST.get(f'cropped_image_{variant_index+1}')
-
-                        if image_file or cropped_image_data:
-                            image_instance = image_form.save(commit=False)
-                            image_instance.variant = variant
-                            
-                            # If cropped image data exists, convert and use it
-                            if cropped_image_data:
-                                from django.core.files.base import ContentFile
-                                import base64
-                                
+                    # Process up to 4 images for this variant
+                    for i in range(1, 5):  # Handle 4 possible images
+                        cropped_image_data = request.POST.get(f'cropped_image_{i}')
+                        
+                        if cropped_image_data:  # Only process if image data exists
+                            try:
                                 # Remove data URL prefix if present
                                 if cropped_image_data.startswith('data:image'):
                                     header, cropped_image_data = cropped_image_data.split(',', 1)
                                 
-                                # Decode base64
+                                # Create new image instance
+                                image_instance = Image(variant=variant)
+                                
+                                # Decode base64 and save image
                                 decoded_image = base64.b64decode(cropped_image_data)
                                 image_instance.image.save(
-                                    f'cropped_{variant.id}_{image_form.prefix}.jpg', 
-                                    ContentFile(decoded_image), 
+                                    f'variant_{variant.id}_image_{i}.jpg',
+                                    ContentFile(decoded_image),
                                     save=True
                                 )
-                            else:
-                                # Use original uploaded image
-                                image_instance.image = image_file
-                                image_instance.save()
+                            except Exception as e:
+                                messages.error(request, f'Error processing image {i}: {str(e)}')
+                                continue
 
+                messages.success(request, 'Variant and images added successfully')
                 return redirect('adminProduct')
+            else:
+                messages.error(request, 'Please correct the errors below.')
 
         else:
             variant_formset = ProductVariantFormSet(queryset=ProductVariant.objects.none(), instance=product)
             image_formset = ProductImageFormSet(queryset=Image.objects.none())
 
-        return render(request, 'addVariants.html', {
+        context = {
             'variant_formset': variant_formset,
             'image_formset': image_formset,
             'product': product,
-        })
+        }
+        return render(request, 'addVariants.html', context)
 
     return redirect('adminLogin')
 
