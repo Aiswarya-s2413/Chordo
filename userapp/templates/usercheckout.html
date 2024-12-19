@@ -18,21 +18,125 @@
     <div class="col-md-6">
      <!-- Add Address Button -->
      <div class="row justify-content-center me-1">
-        <button class="btn btn-secondary mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#addressForm" aria-expanded="false" aria-controls="addressForm">
+        <button class="btn btn-secondary mt-3" type="button" data-bs-toggle="collapse" 
+                data-bs-target="#addressForm" aria-expanded="false" 
+                aria-controls="addressForm">
             + Add Address
-          </button>
-        </div>
-          <!-- Collapsible Form -->
-          <div class="collapse mt-3" id="addressForm">
-            <form id="addAddressForm" method="POST" action="{% url 'addAddress' %}">
-                {% csrf_token %}
-                {{ address_form.as_p }}  <!-- Render the address form -->
-                <input type="hidden" name="next" value="checkout">
-                <div class="row justify-content-center mx-1">
-                    <button type="submit" class="btn btn-dark">Add Address</button>
+        </button>
+    </div>
+
+    <!-- Success Message -->
+    <div id="successMessage" class="alert alert-success mt-3" style="display: none;">
+        New address added successfully!
+    </div>
+
+    <!-- Collapsible Form -->
+    <div class="collapse mt-3" id="addressForm">
+        <form id="addAddressForm" method="POST" action="{% url 'addAddress' %}">
+            {% csrf_token %}
+            {% for field in address_form %}
+                <div class="form-group mb-3">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    <div class="error-message text-danger" id="error-{{ field.name }}"></div>
                 </div>
-            </form>
-        </div>
+            {% endfor %}
+            <input type="hidden" name="next" value="userCheckout">
+            <div class="row justify-content-center mx-1">
+                <button type="submit" class="btn btn-dark">Add Address</button>
+            </div>
+        </form>
+    </div>
+
+    <style>
+    .error-message {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .form-group.has-error input,
+    .form-group.has-error select {
+        border-color: #dc3545;
+    }
+
+    .form-group input.error,
+    .form-group select.error {
+        border-color: #dc3545;
+    }
+
+    #successMessage {
+        transition: opacity 0.5s ease-in-out;
+    }
+    </style>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('addAddressForm');
+        const addressForm = document.getElementById('addressForm');
+        const successMessage = document.getElementById('successMessage');
+        
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Clear previous errors
+            document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+            document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+            
+            const formData = new FormData(this);
+            
+            fetch('{% url "addAddress" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // On success: collapse form, show message, and reload
+                    const bsCollapse = bootstrap.Collapse.getInstance(addressForm);
+                    if (bsCollapse) {
+                        bsCollapse.hide();
+                    }
+                    
+                    // Show success message
+                    successMessage.style.display = 'block';
+                    
+                    // Reset form
+                    form.reset();
+
+                    // Reload the page after a short delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    // On error: keep form open and show errors
+                    addressForm.classList.add('show');
+                    
+                    for (const [field, error] of Object.entries(data.errors)) {
+                        const errorElement = document.getElementById(`error-${field}`);
+                        const inputElement = form.querySelector(`[name="${field}"]`);
+                        
+                        if (errorElement) {
+                            errorElement.textContent = error;
+                        }
+                        
+                        if (inputElement) {
+                            inputElement.classList.add('error');
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                addressForm.classList.add('show');
+            });
+        });
+    });
+    </script>
     </div>
     <form action="{% url 'userCheckout' %}" method="POST" id="payment-form">
         {% csrf_token %}

@@ -25,6 +25,7 @@ from django.template.loader import render_to_string
 from xhtml2pdf import pisa
 from django.http import HttpResponse
 from django.db.models import Q, Count, F
+import json
 
 @never_cache
 def userSignup(request):
@@ -531,31 +532,47 @@ def userProfile(request):
 
 @login_required(login_url='userLogin')
 def addAddress(request):
-    if request.method == 'POST':
-        form = AddressForm(request.POST)
-        if form.is_valid():
-            address = form.save(commit=False)
-            address.user = request.user
-
-            if address.is_primary:
-                Address.objects.filter(user=request.user, is_primary=True).update(is_primary=False)
-
-            address.save()
-            next_page = request.POST.get('next')
-            if next_page == 'checkout':
-                return redirect('userCheckout')
-            else:
-                return redirect('addAddress')
-    else:
-        form = AddressForm()
-
     addresses = Address.objects.filter(user=request.user)
+    
+    if request.method == 'POST':
+        address_form = AddressForm(request.POST)
+        next_page = request.POST.get('next', 'addAddress')
+        
+        if address_form.is_valid():
+            address = address_form.save(commit=False)
+            address.user = request.user
+            address.save()
+            
+            # Handle AJAX requests (for checkout page)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Address added successfully'
+                })
+            
+            # Handle regular form submissions (for address page)
+            messages.success(request, 'Address added successfully!')
+            return redirect(next_page)
+        else:
+            # Handle form errors
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = {field: errors[0] for field, errors in address_form.errors.items()}
+                return JsonResponse({'success': False, 'errors': errors})
+            
+            # Regular form error handling
+            return render(request, 'addAddress.html', {
+                'form': address_form,
+                'addresses': addresses,
+                'show_form': True
+            })
+    
+    # GET request
+    address_form = AddressForm()
+    return render(request, 'addAddress.html', {
+        'form': address_form,
+        'addresses': addresses
+    })
 
-    context = {
-        'form':form,
-        'addresses':addresses
-    }
-    return render(request, 'addaddress.html',context)
 @login_required(login_url='userLogin')
 def editAddress(request,id):
     address = get_object_or_404(Address,id=id)
@@ -608,79 +625,122 @@ def changePassword(request):
 
 @login_required(login_url='userLogin')
 def userCart(request):
-    cart, created = Cart.objects.get_or_create(user=request.user)
-    cart_items = CartItem.objects.filter(
-        cart=cart
-    ).select_related('variant__product').prefetch_related('variant__images')
+    try:
+        cart, created = Cart.objects.get_or_create(user=request.user)
+        cart_items = CartItem.objects.filter(
+            cart=cart
+        ).select_related('variant__product').prefetch_related('variant__images')
 
-    # Fetch valid coupons
-    coupons = Coupon.objects.filter(
-        expiry_date__gt=now()
-    ).exclude(
-        usercoupon__user=request.user,
-        usercoupon__use_count__gte=models.F('max_use_per_user')  
-    )
+        from decimal import Decimal
+        price_total = Decimal('0.00')
+        for item in cart_items:
+            price_total += Decimal(str(item.get_total_price()))
 
-    price_total = sum(item.get_total_price() for item in cart_items)
-    discount = 0
-    selected_coupon = request.session.get('selected_coupon')  # Use session instead of POST
+        discount = Decimal('0.00')
+        selected_coupon = request.session.get('selected_coupon')
 
-    # Handle coupon removal
-    if request.method == 'POST' and request.POST.get('remove_coupon'):
-        selected_coupon = None
-        messages.success(request, "Coupon removed successfully.")
-        request.session.pop('selected_coupon', None)
-
-    elif request.method == 'POST' and request.POST.get('coupon_code'):
-        selected_coupon = request.POST.get('coupon_code')
-        try:
-            coupon = Coupon.objects.get(code=selected_coupon)
-
-            # Ensure coupon is valid
-            if coupon.expiry_date <= now():
-                messages.error(request, "Coupon has expired.")
-            elif UserCoupon.objects.filter(
-                user=request.user,
-                coupon=coupon,
-                use_count__gte=coupon.max_use_per_user  # Validate max_use_per_user
-            ).exists():
-                messages.error(request, f"You have already used the coupon '{coupon.code}' the maximum number of times.")
-            elif coupon.min_order_amount and price_total < coupon.min_order_amount:
-                messages.error(request, f"Minimum order amount to use this coupon is ₹{coupon.min_order_amount}.")
-            else:
-                # Apply discount
-                if coupon.discount_type == 'fixed':
-                    discount = coupon.discount_value
-                elif coupon.discount_type == 'percentage':
-                    discount = (price_total * coupon.discount_value) / 100
-
-                # Create or get UserCoupon entry WITHOUT incrementing use count
-                user_coupon, created = UserCoupon.objects.get_or_create(
-                    user=request.user,
-                    coupon=coupon,
-                    defaults={'use_count': 0}
-                )
-
-                # Save the selected coupon in session
-                request.session['selected_coupon'] = coupon.code
-                messages.success(request, f"Coupon '{coupon.code}' applied successfully!")
+        # Get valid coupons
+        current_date = timezone.now()
         
-        except Coupon.DoesNotExist:
-            messages.error(request, "Invalid coupon code.")
+        # First get all non-expired coupons
+        available_coupons = Coupon.objects.filter(
+            expiry_date__gte=current_date
+        )
 
-    # Calculate final order total
-    request.session['discount'] = float(discount)
-    order_total = price_total - discount + 100 #(including delivery charge)
+        # Filter valid coupons based on user's usage
+        valid_coupons = []
+        for coupon in available_coupons:
+            try:
+                # Get user's usage count for this coupon
+                user_coupon_usage = UserCoupon.objects.filter(
+                    user=request.user,
+                    coupon=coupon
+                ).first()
 
-    return render(request, 'usercart.html', {
-        'cart_items': cart_items,
-        'price_total': price_total,
-        'discount': discount,
-        'coupons': coupons,
-        'order_total': order_total,
-        'selected_coupon': selected_coupon
-    })
+                # Check if user hasn't exceeded max uses
+                user_usage_count = user_coupon_usage.use_count if user_coupon_usage else 0
 
+                if coupon.max_use_per_user and user_usage_count < coupon.max_use_per_user:
+                    valid_coupons.append(coupon)
+            except Exception as e:
+                print(f"Error processing coupon: {str(e)}")
+                continue
+
+        # Handle coupon application/removal
+        if request.method == 'POST':
+            if 'remove_coupon' in request.POST:
+                print("Removing coupon")  # Debug print
+                request.session.pop('selected_coupon', None)
+                request.session.modified = True  # Ensure session is saved
+                messages.success(request, "Coupon removed successfully.")
+                return redirect('userCart')
+            elif 'coupon_code' in request.POST:
+                code = request.POST.get('coupon_code')
+                if code == '':  # If empty selection, treat as coupon removal
+                    if 'selected_coupon' in request.session:
+                        del request.session['selected_coupon']
+                        messages.success(request, "Coupon removed successfully.")
+                else:
+                    try:
+                        coupon = Coupon.objects.get(code=code)
+                        user_coupon = UserCoupon.objects.filter(
+                            user=request.user,
+                            coupon=coupon
+                        ).first()
+                        
+                        if coupon.expiry_date <= current_date:
+                            messages.error(request, "This coupon has expired.")
+                        elif user_coupon and user_coupon.use_count >= coupon.max_use_per_user:
+                            messages.error(request, "You have exceeded the maximum uses for this coupon.")
+                        elif price_total < coupon.min_order_amount:
+                            messages.error(request, f"Minimum order amount of ₹{coupon.min_order_amount} required.")
+                        else:
+                            # Calculate discount
+                            if coupon.discount_type == 'percentage':
+                                discount = (price_total * coupon.discount_value) / 100
+                            else:
+                                discount = coupon.discount_value
+
+                            request.session['selected_coupon'] = coupon.code
+                            messages.success(request, f"Coupon '{coupon.code}' applied successfully!")
+                    except Coupon.DoesNotExist:
+                        messages.error(request, "Invalid coupon code.")
+                return redirect('userCart')
+
+        # Get applied coupon details if exists
+        applied_coupon = None
+        if selected_coupon:
+            try:
+                applied_coupon = Coupon.objects.get(code=selected_coupon)
+                # Recalculate discount if coupon exists
+                if applied_coupon.discount_type == 'percentage':
+                    discount = (price_total * applied_coupon.discount_value) / 100
+                else:
+                    discount = applied_coupon.discount_value
+            except Coupon.DoesNotExist:
+                if 'selected_coupon' in request.session:
+                    del request.session['selected_coupon']
+
+        delivery_charge = Decimal('100.00')
+        order_total = price_total - discount + delivery_charge
+
+        context = {
+            'cart_items': cart_items,
+            'price_total': float(price_total),
+            'discount': float(discount),
+            'valid_coupons': valid_coupons,
+            'order_total': float(order_total),
+            'delivery_charge': float(delivery_charge),
+            'selected_coupon': selected_coupon,
+            'applied_coupon': applied_coupon
+        }
+
+        return render(request, 'usercart.html', context)
+        
+    except Exception as e:
+        print(f"Cart Error: {str(e)}")
+        messages.error(request, "An error occurred while loading your cart.")
+        return redirect('userHome')
 
 @login_required(login_url='userLogin')
 def addToCart(request, id):
@@ -688,6 +748,7 @@ def addToCart(request, id):
     product.popularity += 1
     product.save()
 
+    # Add to cart logic
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_item, created = CartItem.objects.get_or_create(cart=cart, variant=product)
 
@@ -701,6 +762,20 @@ def addToCart(request, id):
             })
 
     cart_item.save()
+
+    # Remove from wishlist if request is from wishlist page
+    if request.GET.get('from_wishlist'):
+        try:
+            wishlist = Wishlist.objects.get(user=request.user)
+            WishlistItem.objects.filter(wishlist=wishlist, variant=product).delete()
+            return JsonResponse({
+                'success': True,
+                'message': 'Item added to cart and removed from wishlist!',
+                'remove_item': True,
+                'variant_id': id
+            })
+        except Wishlist.DoesNotExist:
+            pass
 
     return JsonResponse({
         'success': True,
@@ -743,30 +818,108 @@ def removeFromCart(request,id): #id of the item
     cart_item.delete()
     return redirect('userCart')
 
+@csrf_exempt
 @login_required(login_url='userLogin')
-def updateCartItem(request, id): #id of the item
-    cart_item = get_object_or_404(CartItem, id=id)
-    product = cart_item.variant
+def updateCartItem(request, item_id):
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'message': 'Only POST requests are allowed'
+        }, status=405)
     
-    if request.method == 'POST':
-        quantity_change = int(request.POST.get("quantity_change", 0))
-        
-        new_quantity = cart_item.quantity + quantity_change
-        
-        if new_quantity < 1:
-            cart_item.delete()
-        elif new_quantity > 4 or new_quantity > product.quantity:
-            cart_item.quantity = min(4,product.quantity)
-            cart_item.save()
-            if new_quantity > product.quantity:
-                messages.warning(request, f"Only {product.quantity} of this item is available.")
-            else:
-                messages.warning(request,"Maximum 4 items allowed.")
-        else:
-            cart_item.quantity = new_quantity
-            cart_item.save() 
+    try:
+        # Debug prints
+        print("Request method:", request.method)
+        print("Content type:", request.content_type)
+        print("Raw body:", request.body)
+        print("Headers:", request.headers)
 
-    return redirect('userCart')  
+        # Check if request body is empty
+        if not request.body:
+            return JsonResponse({
+                'success': False,
+                'message': 'Empty request body'
+            }, status=400, content_type='application/json')
+
+        # Try to parse JSON data
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            action = data.get('action')
+            print("Parsed data:", data)
+            print("Action:", action)
+        except json.JSONDecodeError as e:
+            print("JSON decode error:", str(e))
+            return JsonResponse({
+                'success': False,
+                'message': f'Invalid JSON data: {str(e)}'
+            }, status=400, content_type='application/json')
+
+        # Validate action
+        if not action or action not in ['increase', 'decrease']:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid or missing action'
+            }, status=400, content_type='application/json')
+
+        # Get cart item
+        try:
+            cart_item = CartItem.objects.get(id=item_id, cart__user=request.user)
+        except CartItem.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Cart item not found'
+            }, status=404, content_type='application/json')
+
+        # Calculate new quantity
+        new_quantity = cart_item.quantity + (1 if action == 'increase' else -1)
+        
+        # Validate quantity
+        if new_quantity < 1:
+            return JsonResponse({
+                'success': False,
+                'message': 'Quantity cannot be less than 1'
+            }, status=400, content_type='application/json')
+        
+        if new_quantity > 4:
+            return JsonResponse({
+                'success': False,
+                'message': 'Maximum quantity allowed is 4'
+            }, status=400, content_type='application/json')
+        
+        if new_quantity > cart_item.variant.quantity:
+            return JsonResponse({
+                'success': False,
+                'message': f'Only {cart_item.variant.quantity} items available in stock'
+            }, status=400, content_type='application/json')
+
+        # Update quantity
+        cart_item.quantity = new_quantity
+        cart_item.save()
+
+        # Calculate totals
+        cart = cart_item.cart
+        price_total = float(sum(item.variant.get_display_price() * item.quantity for item in cart.items.all()))
+        order_total = price_total + 100  # Adding delivery charge
+
+        response_data = {
+            'success': True,
+            'new_quantity': new_quantity,
+            'price_total': "{:.2f}".format(price_total),
+            'order_total': "{:.2f}".format(order_total),
+            'variant_quantity': cart_item.variant.quantity
+        }
+        
+        print("Sending response:", response_data)
+        return JsonResponse(response_data, content_type='application/json')
+
+    except Exception as e:
+        print("Unexpected error:", str(e))
+        import traceback
+        traceback.print_exc()  # Print full traceback
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=500, content_type='application/json')
 
 @login_required(login_url='userLogin')
 def userCheckout(request):

@@ -36,46 +36,89 @@
         <!-- Main Content -->
         <div class="col-md-8 col-sm-12">
             <!-- Add Address Button -->
-             <div class="row justify-content-center">
-<button class="btn btn-secondary mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#addressForm" aria-expanded="false" aria-controls="addressForm">
-    + Add Address
-  </button>
-</div>
-  <!-- Collapsible Form -->
-  <div class="collapse mt-3" id="addressForm">
-    <form method="POST" action="{% url 'addAddress' %}">
-      {% csrf_token %}
-      {{ form.as_p }}  <!-- Render the address form -->
-      
-      <div class="row justify-content-center">
-        <button type="submit" class="btn btn-dark">Add Address</button>
-      </div>
-    </form>
-  </div>
-
-  <h3 class="mt-5">Saved Addresses</h3>
-{% for address in addresses %}
-    <div class="address-item {% if address.is_primary %}primary{% endif %} mb-3 p-3 border rounded">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <p class="mb-0">{{ address.address_line1 }}{% if address.address_line2 %}, {{ address.address_line2 }}{% endif %}</p>
-                <p class="mb-0">{{ address.city }},{{address.pincode}}, {{ address.state }}, {{ address.country }}</p>
-                {% if address.is_primary %}
-                    <span class="badge bg-success">Primary Address</span>
-                {% endif %}
+            <div class="row justify-content-center">
+                <button class="btn btn-secondary mt-3" type="button" data-bs-toggle="collapse" 
+                        data-bs-target="#addressForm" aria-expanded="{% if show_form or form.errors %}true{% else %}false{% endif %}" 
+                        aria-controls="addressForm">
+                    + Add Address
+                </button>
             </div>
-            
-            <div>
-                <button class="btn btn-warning btn-sm me-2" data-bs-toggle="modal" data-bs-target="#edit{{ address.id }}">Edit</button>
-                <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#delete{{ address.id }}">Delete</button>
-            </div>
-        </div>
-    </div>
-{% empty %}
-    <p>No addresses added yet.</p>
-{% endfor %}
 
-  
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{% if message.tags %}{{ message.tags }}{% endif %} mt-3">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Collapsible Form -->
+            <div class="collapse mt-3 {% if show_form or form.errors %}show{% endif %}" id="addressForm">
+                <form method="POST" action="{% url 'addAddress' %}">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="form-group mb-3">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    <div class="row justify-content-center">
+                        <button type="submit" class="btn btn-dark">Add Address</button>
+                    </div>
+                </form>
+            </div>
+
+            <h3 class="mt-5">Saved Addresses</h3>
+            {% for address in addresses %}
+                <div class="address-item {% if address.is_primary %}primary{% endif %} mb-3 p-3 border rounded">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-0">{{ address.address_line1 }}{% if address.address_line2 %}, {{ address.address_line2 }}{% endif %}</p>
+                            <p class="mb-0">{{ address.city }}, {{address.pincode}}, {{ address.state }}, {{ address.country }}</p>
+                            {% if address.is_primary %}
+                                <span class="badge bg-success">Primary Address</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <button class="btn btn-warning btn-sm me-2" data-bs-toggle="modal" data-bs-target="#edit{{ address.id }}">Edit</button>
+                            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#delete{{ address.id }}">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <p>No addresses added yet.</p>
+            {% endfor %}
+
+            <style>
+            .form-group label {
+                font-weight: 500;
+                margin-bottom: 0.5rem;
+            }
+
+            .form-group input,
+            .form-group select {
+                width: 100%;
+                padding: 0.375rem 0.75rem;
+                border: 1px solid #ced4da;
+                border-radius: 0.25rem;
+            }
+
+            .text-danger {
+                color: #dc3545;
+                font-size: 0.875rem;
+                margin-top: 0.25rem;
+            }
+
+            .alert {
+                transition: opacity 0.5s ease-in-out;
+            }
+            </style>
+
         </div>
     </div>
 </div>

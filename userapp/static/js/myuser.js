@@ -30,3 +30,15 @@ document.querySelectorAll('.color-box').forEach(function(colorBox) {
         colorBox.style.backgroundColor = bgColor;
     }
 });
+
+// Wait for DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if element exists before trying to add event listener
+    const mainImageContainer = document.querySelector('.main-image-container');
+    if (mainImageContainer) {
+        // Only add event listeners if the element exists
+        mainImageContainer.addEventListener('click', function() {
+            // Your existing image click handling code
+        });
+    }
+}); 
