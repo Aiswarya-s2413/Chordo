@@ -560,7 +560,7 @@ def addAddress(request):
                 return JsonResponse({'success': False, 'errors': errors})
             
             # Regular form error handling
-            return render(request, 'addAddress.html', {
+            return render(request, 'addaddress.html', {
                 'form': address_form,
                 'addresses': addresses,
                 'show_form': True
