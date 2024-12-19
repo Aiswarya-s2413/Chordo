@@ -828,38 +828,22 @@ def updateCartItem(request, item_id):
         }, status=405)
     
     try:
-        # Debug prints
-        print("Request method:", request.method)
-        print("Content type:", request.content_type)
-        print("Raw body:", request.body)
-        print("Headers:", request.headers)
-
-        # Check if request body is empty
-        if not request.body:
-            return JsonResponse({
-                'success': False,
-                'message': 'Empty request body'
-            }, status=400, content_type='application/json')
-
-        # Try to parse JSON data
+        # Parse JSON data
         try:
             data = json.loads(request.body.decode('utf-8'))
             action = data.get('action')
-            print("Parsed data:", data)
-            print("Action:", action)
         except json.JSONDecodeError as e:
-            print("JSON decode error:", str(e))
             return JsonResponse({
                 'success': False,
-                'message': f'Invalid JSON data: {str(e)}'
-            }, status=400, content_type='application/json')
+                'message': 'Invalid JSON data'
+            }, status=400)
 
         # Validate action
         if not action or action not in ['increase', 'decrease']:
             return JsonResponse({
                 'success': False,
                 'message': 'Invalid or missing action'
-            }, status=400, content_type='application/json')
+            }, status=400)
 
         # Get cart item
         try:
@@ -868,29 +852,29 @@ def updateCartItem(request, item_id):
             return JsonResponse({
                 'success': False,
                 'message': 'Cart item not found'
-            }, status=404, content_type='application/json')
+            }, status=404)
 
         # Calculate new quantity
         new_quantity = cart_item.quantity + (1 if action == 'increase' else -1)
         
-        # Validate quantity
+        # Validate quantity constraints
         if new_quantity < 1:
             return JsonResponse({
                 'success': False,
                 'message': 'Quantity cannot be less than 1'
-            }, status=400, content_type='application/json')
+            }, status=400)
         
         if new_quantity > 4:
             return JsonResponse({
                 'success': False,
                 'message': 'Maximum quantity allowed is 4'
-            }, status=400, content_type='application/json')
+            }, status=400)
         
         if new_quantity > cart_item.variant.quantity:
             return JsonResponse({
                 'success': False,
                 'message': f'Only {cart_item.variant.quantity} items available in stock'
-            }, status=400, content_type='application/json')
+            }, status=400)
 
         # Update quantity
         cart_item.quantity = new_quantity
@@ -901,25 +885,19 @@ def updateCartItem(request, item_id):
         price_total = float(sum(item.variant.get_display_price() * item.quantity for item in cart.items.all()))
         order_total = price_total + 100  # Adding delivery charge
 
-        response_data = {
+        return JsonResponse({
             'success': True,
             'new_quantity': new_quantity,
             'price_total': "{:.2f}".format(price_total),
             'order_total': "{:.2f}".format(order_total),
             'variant_quantity': cart_item.variant.quantity
-        }
-        
-        print("Sending response:", response_data)
-        return JsonResponse(response_data, content_type='application/json')
+        })
 
     except Exception as e:
-        print("Unexpected error:", str(e))
-        import traceback
-        traceback.print_exc()  # Print full traceback
         return JsonResponse({
             'success': False,
             'message': str(e)
-        }, status=500, content_type='application/json')
+        }, status=500)
 
 @login_required(login_url='userLogin')
 def userCheckout(request):

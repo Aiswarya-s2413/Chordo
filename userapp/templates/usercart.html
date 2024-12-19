@@ -482,6 +482,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             });
 
+            // Handle non-JSON responses
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const textResponse = await response.text();
+                console.error('Non-JSON response:', textResponse);
+                throw new Error('Server returned non-JSON response');
+            }
+
             const data = await response.json();
 
             if (data.success) {
@@ -522,7 +530,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error:', error);
-            showMessage(itemId, error.message || 'An error occurred', 'error');
+            showMessage(itemId, 'An error occurred while updating quantity', 'error');
         }
     }
 
@@ -539,26 +547,31 @@ document.addEventListener('DOMContentLoaded', function() {
     const couponForm = document.getElementById('couponForm');
     const couponSelect = document.getElementById('couponSelect');
     
-    couponForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        try {
-            const response = await fetch('{% url "userCart" %}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                }
-            });
+    if (couponForm) {
+        couponForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            if (response.ok) {
-                window.location.reload();
+            const formData = new FormData(this);
+            try {
+                const response = await fetch(couponForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const errorText = await response.text();
+                    console.error('Coupon application failed:', errorText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
             }
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    });
+        });
+    }
 });
 </script>
 
