@@ -140,9 +140,6 @@
                                         {% else %}
                                             ₹{{ coupon.discount_value }} off
                                         {% endif %}
-                                        {% if coupon.min_order_amount %}
-                                            (Min. ₹{{ coupon.min_order_amount }})
-                                        {% endif %}
                                     </option>
                                 {% endfor %}
                             </select>
