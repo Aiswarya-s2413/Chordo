@@ -568,7 +568,7 @@ def addAddress(request):
     
     # GET request
     address_form = AddressForm()
-    return render(request, 'addAddress.html', {
+    return render(request, 'addaddress.html', {
         'form': address_form,
         'addresses': addresses
     })
